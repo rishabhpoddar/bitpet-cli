@@ -13,15 +13,36 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    // match args.command {
-    //     Commands::Init { name } => match name {
-    //         Some(pet_name) => println!("Initializing BitPet project with name: {}", pet_name),
-    //         None => println!("Initializing BitPet project with default settings"),
-    //     },
-    //     Commands::Greet { name, count } => {
-    //         for _ in 0..count {
-    //             println!("Hello, {}!", name);
-    //         }
-    //     }
-    // }
+    match args.command {
+        Commands::Login {} => {
+            println!("Logging in...");
+        }
+        Commands::Logout {} => {
+            println!("Logging out...");
+        }
+        Commands::NewPet {} => {
+            println!("Adopting a new pet...");
+        }
+        Commands::RemovePet {} => {
+            println!("Letting go of your pet...");
+        }
+        Commands::Status {} => {
+            println!("Getting status of your pet...");
+        }
+        Commands::Feed {} => {
+            println!("Feeding your pet...");
+        }
+        Commands::Play {} => {
+            println!("Playing with your pet...");
+        }
+        Commands::AddRepo { path } => {
+            println!("Adding a git repo: {}", path);
+        }
+        Commands::RemoveRepo { path } => {
+            println!("Removing a git repo: {}", path);
+        }
+        Commands::ListRepos {} => {
+            println!("Listing all git repos...");
+        }
+    }
 }
