@@ -1,49 +1,13 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
+
+mod commands;
+use commands::Commands;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Get the mood, health, and other details of your pet
-    Status {},
-
-    /// Feed your pet (based on your git commits since last feed)
-    Feed {},
-
-    /// Play with your pet (Makes it happy)
-    Play {},
-
-    /// Add a git repo (will be used to fetch commits for feeding your pet)
-    AddRepo {
-        #[arg(short, long)]
-        path: String,
-    },
-
-    /// Remove a git repo (will not be used to fetch commits for feeding your pet)
-    RemoveRepo {
-        #[arg(short, long)]
-        path: String,
-    },
-
-    /// List all the git repos from which commits will be fetched for feeding your pet
-    ListRepos {},
-
-    /// Login to your BitPet account
-    Login {},
-
-    /// Logout from your BitPet account
-    Logout {},
-
-    /// Adopt a new pet if you don't already have one.
-    NewPet {},
-
-    /// Let go of your pet
-    RemovePet {},
 }
 
 fn main() {
