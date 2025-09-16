@@ -19,11 +19,7 @@ type CommandResult = Result<(), Box<dyn std::error::Error>>;
 
 /// Helper function to check if user is authenticated
 fn require_auth(config: &Config) -> Result<UserInfo, AuthError> {
-    if config.user.is_some() {
-        Ok(config.user.as_ref().unwrap().clone())
-    } else {
-        Err(AuthError::NotLoggedIn)
-    }
+    config.user.as_ref().cloned().ok_or(AuthError::NotLoggedIn)
 }
 
 #[derive(Debug)]
