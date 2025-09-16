@@ -1,9 +1,11 @@
 use clap::Parser;
 use colored::*;
 
+mod auth;
 mod commands;
 mod config;
 
+use auth::execute_authenticated_command;
 use commands::Commands;
 use config::{Config, UserInfo};
 
@@ -16,35 +18,6 @@ struct Args {
 
 /// Result type for command operations
 type CommandResult = Result<(), Box<dyn std::error::Error>>;
-
-/// Helper function to check if user is authenticated
-fn require_auth(config: &Config) -> Result<UserInfo, AuthError> {
-    config.user.as_ref().cloned().ok_or(AuthError::NotLoggedIn)
-}
-
-#[derive(Debug)]
-enum AuthError {
-    NotLoggedIn,
-}
-
-impl std::fmt::Display for AuthError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AuthError::NotLoggedIn => write!(f, "Please login first using 'pet login'"),
-        }
-    }
-}
-
-impl std::error::Error for AuthError {}
-
-/// Execute a command that requires authentication
-fn execute_authenticated_command<F>(config: &mut Config, operation: F) -> CommandResult
-where
-    F: FnOnce(UserInfo, &mut Config) -> CommandResult,
-{
-    let user = require_auth(&config)?;
-    operation(user, config)
-}
 
 // Command handlers
 fn handle_login(config: &Config) -> CommandResult {
