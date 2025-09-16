@@ -27,13 +27,23 @@ fn main() {
 
     let result = match args.command {
         Commands::Login {} => {
-            println!("Logging in...");
-            Ok(())
+            if let Some(user) = &config.user {
+                println!("You are already logged in with email: {}", user.email);
+                Ok(())
+            } else {
+                // TODO:...
+                Ok(())
+            }
         }
         Commands::Logout {} => {
-            println!("Logging out...");
-            config.user = None;
-            config.save()
+            if let Some(_user) = &config.user {
+                println!("Logging out...");
+                config.user = None;
+                config.save()
+            } else {
+                println!("Not logged in");
+                Ok(())
+            }
         }
         Commands::Whoami {} => {
             if let Some(user) = &config.user {
@@ -44,36 +54,76 @@ fn main() {
             Ok(())
         }
         Commands::NewPet {} => {
-            println!("Adopting a new pet...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
         Commands::RemovePet {} => {
-            println!("Letting go of your pet...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
         Commands::Status {} => {
-            println!("Getting status of your pet...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
         Commands::Feed {} => {
-            println!("Feeding your pet...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
         Commands::Play {} => {
-            println!("Playing with your pet...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
-        Commands::AddRepo { path } => {
-            println!("Adding a git repo: {}", path);
-            Ok(())
+        Commands::AddRepo { path: _path } => {
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
-        Commands::RemoveRepo { path } => {
-            println!("Removing a git repo: {}", path);
-            Ok(())
+        Commands::RemoveRepo { path: _path } => {
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
         Commands::ListRepos {} => {
-            println!("Listing all git repos...");
-            Ok(())
+            if let Some(_user) = &config.user {
+                // TODO:...
+                Ok(())
+            } else {
+                println!("Please login first using 'pet login'");
+                Ok(())
+            }
         }
     };
 
