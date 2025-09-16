@@ -17,25 +17,37 @@ struct Args {
 type CommandResult = Result<(), Box<dyn std::error::Error>>;
 
 /// Helper function to check if user is authenticated
-fn require_auth(config: &Config) -> Result<(), &'static str> {
+fn require_auth(config: &Config) -> Result<(), AuthError> {
     if config.user.is_some() {
         Ok(())
     } else {
-        Err("Please login first using 'pet login'")
+        Err(AuthError::NotLoggedIn)
     }
 }
 
+#[derive(Debug)]
+enum AuthError {
+    NotLoggedIn,
+}
+
+impl std::fmt::Display for AuthError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AuthError::NotLoggedIn => write!(f, "Please login first using 'pet login'"),
+        }
+    }
+}
+
+impl std::error::Error for AuthError {}
+
 /// Execute a command that requires authentication
-fn execute_authenticated_command<F>(config: &Config, operation: F) -> CommandResult
+fn execute_authenticated_command<F>(config: &mut Config, operation: F) -> CommandResult
 where
-    F: FnOnce() -> CommandResult,
+    F: FnOnce(&mut Config) -> CommandResult,
 {
     match require_auth(config) {
-        Ok(()) => operation(),
-        Err(msg) => {
-            println!("{}", msg);
-            Ok(())
-        }
+        Ok(()) => operation(config),
+        Err(e) => Err(Box::new(e)),
     }
 }
 
@@ -64,45 +76,42 @@ fn handle_logout(config: &mut Config) -> CommandResult {
 }
 
 fn handle_whoami(config: &Config) -> CommandResult {
-    if let Some(user) = &config.user {
-        println!("Email: {}", user.email);
-    } else {
-        println!("Not logged in");
-    }
+    // TODO: Make the type better of the input cause we are sure that the user is authenticated
+    println!("Email: {}", config.user.as_ref().unwrap().email);
     Ok(())
 }
 
-fn handle_new_pet() -> CommandResult {
+fn handle_new_pet(_config: &mut Config) -> CommandResult {
     // TODO: Implement new pet logic
     println!("New pet functionality not yet implemented");
     Ok(())
 }
 
-fn handle_remove_pet() -> CommandResult {
+fn handle_remove_pet(_config: &mut Config) -> CommandResult {
     // TODO: Implement remove pet logic
     println!("Remove pet functionality not yet implemented");
     Ok(())
 }
 
-fn handle_status() -> CommandResult {
+fn handle_status(_config: &mut Config) -> CommandResult {
     // TODO: Implement status logic
     println!("Status functionality not yet implemented");
     Ok(())
 }
 
-fn handle_feed() -> CommandResult {
+fn handle_feed(_config: &mut Config) -> CommandResult {
     // TODO: Implement feed logic
     println!("Feed functionality not yet implemented");
     Ok(())
 }
 
-fn handle_play() -> CommandResult {
+fn handle_play(_config: &mut Config) -> CommandResult {
     // TODO: Implement play logic
     println!("Play functionality not yet implemented");
     Ok(())
 }
 
-fn handle_add_repo(path: &str) -> CommandResult {
+fn handle_add_repo(_config: &mut Config, path: &str) -> CommandResult {
     // TODO: Implement add repo logic
     println!(
         "Add repo functionality not yet implemented for path: {}",
@@ -111,7 +120,7 @@ fn handle_add_repo(path: &str) -> CommandResult {
     Ok(())
 }
 
-fn handle_remove_repo(path: &str) -> CommandResult {
+fn handle_remove_repo(_config: &mut Config, path: &str) -> CommandResult {
     // TODO: Implement remove repo logic
     println!(
         "Remove repo functionality not yet implemented for path: {}",
@@ -120,7 +129,7 @@ fn handle_remove_repo(path: &str) -> CommandResult {
     Ok(())
 }
 
-fn handle_list_repos() -> CommandResult {
+fn handle_list_repos(_config: &mut Config) -> CommandResult {
     // TODO: Implement list repos logic
     println!("List repos functionality not yet implemented");
     Ok(())
@@ -140,20 +149,24 @@ fn main() {
 
     let result = match args.command {
         Commands::Login {} => handle_login(&config),
-        Commands::Logout {} => handle_logout(&mut config),
-        Commands::Whoami {} => handle_whoami(&config),
-        Commands::NewPet {} => execute_authenticated_command(&config, || handle_new_pet()),
-        Commands::RemovePet {} => execute_authenticated_command(&config, || handle_remove_pet()),
-        Commands::Status {} => execute_authenticated_command(&config, || handle_status()),
-        Commands::Feed {} => execute_authenticated_command(&config, || handle_feed()),
-        Commands::Play {} => execute_authenticated_command(&config, || handle_play()),
+        Commands::Logout {} => execute_authenticated_command(&mut config, |c| handle_logout(c)),
+        Commands::Whoami {} => execute_authenticated_command(&mut config, |c| handle_whoami(c)),
+        Commands::NewPet {} => execute_authenticated_command(&mut config, |c| handle_new_pet(c)),
+        Commands::RemovePet {} => {
+            execute_authenticated_command(&mut config, |c| handle_remove_pet(c))
+        }
+        Commands::Status {} => execute_authenticated_command(&mut config, |c| handle_status(c)),
+        Commands::Feed {} => execute_authenticated_command(&mut config, |c| handle_feed(c)),
+        Commands::Play {} => execute_authenticated_command(&mut config, |c| handle_play(c)),
         Commands::AddRepo { path } => {
-            execute_authenticated_command(&config, || handle_add_repo(&path))
+            execute_authenticated_command(&mut config, |c| handle_add_repo(c, &path))
         }
         Commands::RemoveRepo { path } => {
-            execute_authenticated_command(&config, || handle_remove_repo(&path))
+            execute_authenticated_command(&mut config, |c| handle_remove_repo(c, &path))
         }
-        Commands::ListRepos {} => execute_authenticated_command(&config, || handle_list_repos()),
+        Commands::ListRepos {} => {
+            execute_authenticated_command(&mut config, |c| handle_list_repos(c))
+        }
     };
 
     // Handle any errors from config operations
@@ -162,3 +175,5 @@ fn main() {
         std::process::exit(1);
     }
 }
+
+// TODO: Make eprintln print in red

@@ -8,7 +8,7 @@ pub struct Config {
     pub user: Option<UserInfo>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserInfo {
     pub email: String,
     pub token: String,
