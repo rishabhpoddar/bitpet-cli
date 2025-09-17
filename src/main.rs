@@ -72,28 +72,24 @@ fn handle_play(_user: UserInfo, _config: &mut Config) -> CommandResult {
 }
 
 fn handle_add_repo(_user: UserInfo, _config: &mut Config, path: String) -> CommandResult {
-    let normalised_path = utils::normalise_path(path)?;
+    let normalised_path = utils::NormalisedPath::new(path)?;
 
     if !git::is_git(&normalised_path) {
-        return Err(format!(
-            "Provided path is not a git repository: {}",
-            normalised_path.path.display()
-        )
-        .into());
+        return Err(format!("Provided path is not a git repository: {}", normalised_path).into());
     }
 
     // TODO: Need to implement more..
-    println!("Adding repo: {}", normalised_path.path.display());
+    println!("Adding repo: {}", normalised_path);
     Ok(())
 }
 
 fn handle_remove_repo(_user: UserInfo, _config: &mut Config, path: String) -> CommandResult {
-    let normalised_path = utils::normalise_path(path)?;
+    let normalised_path = utils::NormalisedPath::new(path)?;
 
     // TODO: Implement remove repo logic
     println!(
         "Remove repo functionality not yet implemented for path: {}",
-        normalised_path.path.display()
+        normalised_path
     );
     Ok(())
 }

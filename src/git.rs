@@ -1,7 +1,7 @@
 use crate::utils;
 
 pub fn is_git(normalised_path: &utils::NormalisedPath) -> bool {
-    let mut path = normalised_path.path.as_path();
+    let mut path = normalised_path.path();
     if path.join(".git").exists() {
         return true;
     }
