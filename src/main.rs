@@ -5,6 +5,8 @@ mod auth;
 mod commands;
 mod config;
 mod constants;
+mod git;
+mod utils;
 
 use auth::{do_login, do_logout, execute_authenticated_command};
 use commands::Commands;
@@ -69,20 +71,29 @@ fn handle_play(_user: UserInfo, _config: &mut Config) -> CommandResult {
     Ok(())
 }
 
-fn handle_add_repo(_user: UserInfo, _config: &mut Config, path: &str) -> CommandResult {
-    // TODO: Implement add repo logic
-    println!(
-        "Add repo functionality not yet implemented for path: {}",
-        path
-    );
+fn handle_add_repo(_user: UserInfo, _config: &mut Config, path: String) -> CommandResult {
+    let normalised_path = utils::normalise_path(path)?;
+
+    if !git::is_git(&normalised_path) {
+        return Err(format!(
+            "Provided path is not a git repository: {}",
+            normalised_path.path.display()
+        )
+        .into());
+    }
+
+    // TODO: Need to implement more..
+    println!("Adding repo: {}", normalised_path.path.display());
     Ok(())
 }
 
-fn handle_remove_repo(_user: UserInfo, _config: &mut Config, path: &str) -> CommandResult {
+fn handle_remove_repo(_user: UserInfo, _config: &mut Config, path: String) -> CommandResult {
+    let normalised_path = utils::normalise_path(path)?;
+
     // TODO: Implement remove repo logic
     println!(
         "Remove repo functionality not yet implemented for path: {}",
-        path
+        normalised_path.path.display()
     );
     Ok(())
 }
@@ -125,10 +136,10 @@ fn main() {
         Commands::Feed {} => execute_authenticated_command(&mut config, |u, c| handle_feed(u, c)),
         Commands::Play {} => execute_authenticated_command(&mut config, |u, c| handle_play(u, c)),
         Commands::AddRepo { path } => {
-            execute_authenticated_command(&mut config, |u, c| handle_add_repo(u, c, &path))
+            execute_authenticated_command(&mut config, |u, c| handle_add_repo(u, c, path))
         }
         Commands::RemoveRepo { path } => {
-            execute_authenticated_command(&mut config, |u, c| handle_remove_repo(u, c, &path))
+            execute_authenticated_command(&mut config, |u, c| handle_remove_repo(u, c, path))
         }
         Commands::ListRepos {} => {
             execute_authenticated_command(&mut config, |u, c| handle_list_repos(u, c))
