@@ -50,7 +50,7 @@ pub fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
         .bearer_auth(user.token)
         .send()?;
 
-    if response.status().is_success() {
+    if response.status().is_success() || response.status().as_u16() == 401 {
         config.user = None;
         config.save()?;
         println!("Logged out successfully!");
