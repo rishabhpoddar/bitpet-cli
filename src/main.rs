@@ -5,7 +5,7 @@ mod auth;
 mod commands;
 mod config;
 
-use auth::execute_authenticated_command;
+use auth::{do_login, do_logout, execute_authenticated_command};
 use commands::Commands;
 use config::{Config, UserInfo};
 
@@ -20,21 +20,16 @@ struct Args {
 type CommandResult = Result<(), Box<dyn std::error::Error>>;
 
 // Command handlers
-fn handle_login(config: &Config) -> CommandResult {
-    if let Some(user) = &config.user {
-        println!("You are already logged in with email: {}", user.email);
+fn handle_login(config: &mut Config) -> CommandResult {
+    if let Some(_user) = &config.user {
+        return Err(format!("You are already logged in with email: {}", _user.email).into());
     } else {
-        // TODO: Implement login logic
-        println!("Login functionality not yet implemented");
+        do_login(config)
     }
-    Ok(())
 }
 
 fn handle_logout(user: UserInfo, config: &mut Config) -> CommandResult {
-    println!("Logging out user with email: {}", user.email);
-    config.user = None;
-    config.save()?;
-    Ok(())
+    do_logout(user, config)
 }
 
 fn handle_whoami(user: UserInfo, _config: &mut Config) -> CommandResult {
@@ -109,7 +104,7 @@ fn main() {
     };
 
     let result = match args.command {
-        Commands::Login {} => handle_login(&config),
+        Commands::Login {} => handle_login(&mut config),
         Commands::Logout {} => {
             execute_authenticated_command(&mut config, |u, c| handle_logout(u, c))
         }
