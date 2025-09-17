@@ -4,6 +4,7 @@ use colored::*;
 mod auth;
 mod commands;
 mod config;
+mod constants;
 
 use auth::{do_login, do_logout, execute_authenticated_command};
 use commands::Commands;
@@ -34,6 +35,7 @@ fn handle_logout(user: UserInfo, config: &mut Config) -> CommandResult {
 
 fn handle_whoami(user: UserInfo, _config: &mut Config) -> CommandResult {
     println!("Email: {}", user.email);
+    println!("Username: {}", user.username);
     Ok(())
 }
 

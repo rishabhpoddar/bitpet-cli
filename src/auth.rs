@@ -1,5 +1,6 @@
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
+use crate::constants::{MOCK_USER_CODE, MOCK_USER_EMAIL, MOCK_USER_TOKEN, MOCK_USER_USERNAME};
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::json;
@@ -42,7 +43,14 @@ where
 }
 
 pub fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
-    println!("Logging out user with email: {}...", user.email);
+    println!("Logging out user with email: {}", user.email);
+
+    if user.email == MOCK_USER_EMAIL {
+        config.user = None;
+        config.save()?;
+        println!("Logged out successfully!");
+        return Ok(());
+    }
 
     let client = reqwest::blocking::Client::new();
     let response = client
@@ -85,6 +93,18 @@ pub fn do_login(config: &mut Config) -> CommandResult {
     std::io::stdin().read_line(&mut code).unwrap();
     let code = code.trim();
     println!("\nLogging in...");
+
+    if code == MOCK_USER_CODE {
+        config.user = Some(UserInfo {
+            username: MOCK_USER_USERNAME.to_string(),
+            email: MOCK_USER_EMAIL.to_string(),
+            token: MOCK_USER_TOKEN.to_string(),
+        });
+        config.save()?;
+
+        println!("Successfully logged in as: {}", MOCK_USER_EMAIL);
+        return Ok(());
+    }
 
     let client = reqwest::blocking::Client::new();
     let response = client
