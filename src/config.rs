@@ -3,12 +3,15 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[serde(default)]
 pub struct Config {
     /// User authentication information
     pub user: Option<UserInfo>,
+    pub repos: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct UserInfo {
     pub username: String,
     pub email: String,

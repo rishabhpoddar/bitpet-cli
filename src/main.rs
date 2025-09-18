@@ -113,7 +113,7 @@ impl AuthenticatedCommand for PlayCommand {
 
 #[async_trait]
 impl AuthenticatedCommand for AddRepoCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         let normalised_path = utils::NormalisedPath::new(self.path)?;
 
         if !git::is_git(&normalised_path) {
@@ -122,30 +122,72 @@ impl AuthenticatedCommand for AddRepoCommand {
             );
         }
 
-        // TODO: Need to implement more..
-        println!("Adding repo: {}", normalised_path);
+        if config.repos.contains(&normalised_path.to_string()) {
+            return Err(format!("Repo already added: {}", normalised_path).into());
+        }
+
+        config.repos.push(normalised_path.to_string());
+        config.save()?;
+
+        println!("Added new Git repository successfully!");
         Ok(())
     }
 }
 
 #[async_trait]
 impl AuthenticatedCommand for RemoveRepoCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         let normalised_path = utils::NormalisedPath::new(self.path)?;
-        // TODO: Implement remove repo logic
-        println!(
-            "Remove repo functionality not yet implemented for path: {}",
-            normalised_path
-        );
+
+        if !config.repos.contains(&normalised_path.to_string()) {
+            return Err(format!("Repo not found: {}", normalised_path).into());
+        }
+        remove_repo(config, normalised_path.to_string())?;
+        println!("Removed repository successfully!");
         Ok(())
     }
 }
 
+fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn std::error::Error>> {
+    if config.repos.contains(&repo) {
+        config
+            .repos
+            .remove(config.repos.iter().position(|r| r == &repo).unwrap());
+        config.save()?;
+    }
+    Ok(())
+}
+
 #[async_trait]
 impl AuthenticatedCommand for ListReposCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement list repos logic
-        println!("List repos functionality not yet implemented");
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+        let mut repos_to_remove = Vec::new();
+
+        if config.repos.is_empty() {
+            println!("No Git repositories added yet");
+            return Ok(());
+        }
+
+        for repo in &config.repos {
+            let normalised_path = utils::NormalisedPath::new(repo.clone());
+            if let Err(_e) = normalised_path {
+                repos_to_remove.push(repo.clone());
+                continue;
+            }
+
+            if !git::is_git(&normalised_path.unwrap()) {
+                repos_to_remove.push(repo.clone());
+                continue;
+            }
+
+            println!("{}", repo);
+        }
+
+        // Remove invalid repos after iteration
+        for repo in repos_to_remove {
+            remove_repo(config, repo)?;
+        }
+
         Ok(())
     }
 }
