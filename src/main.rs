@@ -162,32 +162,25 @@ fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn std::err
 #[async_trait]
 impl AuthenticatedCommand for ListReposCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let mut repos_to_remove = Vec::new();
-
         if config.repos.is_empty() {
             println!("No Git repositories added yet");
             return Ok(());
         }
 
-        for repo in &config.repos {
+        config.repos.retain(|repo| {
             let normalised_path = utils::NormalisedPath::new(repo.clone());
-            if let Err(_e) = normalised_path {
-                repos_to_remove.push(repo.clone());
-                continue;
+            match normalised_path {
+                Ok(normalised_path) => {
+                    if !git::is_git(&normalised_path) {
+                        return false;
+                    }
+                    println!("- {}", normalised_path);
+                    true
+                }
+                Err(_e) => false,
             }
-
-            if !git::is_git(&normalised_path.unwrap()) {
-                repos_to_remove.push(repo.clone());
-                continue;
-            }
-
-            println!("{}", repo);
-        }
-
-        // Remove invalid repos after iteration
-        for repo in repos_to_remove {
-            remove_repo(config, repo)?;
-        }
+        });
+        config.save()?;
 
         Ok(())
     }
