@@ -16,7 +16,7 @@ impl std::fmt::Display for NormalisedGitPath {
 pub enum NormalisedPathError {
     PathNotExists(String),
     PathNotGitRepository(String),
-    Other(String),
+    Other(Box<dyn std::error::Error>),
 }
 
 impl std::fmt::Display for NormalisedPathError {
@@ -44,7 +44,7 @@ impl NormalisedGitPath {
             std::path::PathBuf::from(path)
         } else {
             env::current_dir()
-                .map_err(|e| NormalisedPathError::Other(e.to_string()))?
+                .map_err(|e| NormalisedPathError::Other(e.into()))?
                 .join(path)
         };
 
@@ -57,7 +57,7 @@ impl NormalisedGitPath {
         let normalised_path = NormalisedGitPath {
             path: path
                 .canonicalize()
-                .map_err(|e| NormalisedPathError::Other(e.to_string()))?,
+                .map_err(|e| NormalisedPathError::Other(e.into()))?,
         };
 
         if !git::is_git(&normalised_path) {
