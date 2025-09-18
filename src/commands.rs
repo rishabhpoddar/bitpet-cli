@@ -13,13 +13,11 @@ pub enum Commands {
 
     /// Add a git repo (will be used to fetch commits for feeding your pet)
     AddRepo {
-        #[arg(short, long)]
         path: String,
     },
 
     /// Remove a git repo (will not be used to fetch commits for feeding your pet)
     RemoveRepo {
-        #[arg(short, long)]
         path: String,
     },
 
