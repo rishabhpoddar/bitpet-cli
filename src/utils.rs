@@ -12,6 +12,8 @@ impl std::fmt::Display for NormalisedPath {
 }
 
 impl NormalisedPath {
+    // NOTE: These are blocking function calls and are being called in an async context. But it is
+    // OK cause this is client code anyway.
     pub fn new(path: String) -> Result<NormalisedPath, Box<dyn std::error::Error>> {
         if path.is_empty() {
             return Err("Path cannot be empty".into());
