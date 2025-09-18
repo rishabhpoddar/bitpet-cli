@@ -1,7 +1,7 @@
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
 use crate::constants::{MOCK_USER_CODE, MOCK_USER_EMAIL, MOCK_USER_TOKEN, MOCK_USER_USERNAME};
-// use crate::http_mocking::LoggingMiddleware;
+use crate::http_mocking::MockingMiddleware;
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::json;
@@ -57,7 +57,9 @@ pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
         return Ok(());
     }
 
-    let client = reqwest::Client::new();
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
     let response = client
         .post("https://api.bitpet.dev/v1/auth/logout")
         .bearer_auth(user.token)
@@ -112,16 +114,15 @@ pub async fn do_login(config: &mut Config) -> CommandResult {
         return Ok(());
     }
 
-    // let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
-    //     .with(LoggingMiddleware)
-    //     .build();
-    let client = reqwest::Client::new();
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
     let response = client
         .post("https://api.bitpet.dev/v1/auth/login")
-        .json(&json!({
+        .body(serde_json::to_string(&json!({
             "otp": random_string,
             "code": code
-        }))
+        }))?)
         .send()
         .await?;
 
