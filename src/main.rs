@@ -114,13 +114,7 @@ impl AuthenticatedCommand for PlayCommand {
 #[async_trait]
 impl AuthenticatedCommand for AddRepoCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let normalised_path = utils::NormalisedPath::new(self.path)?;
-
-        if !git::is_git(&normalised_path) {
-            return Err(
-                format!("Provided path is not a git repository: {}", normalised_path).into(),
-            );
-        }
+        let normalised_path = utils::NormalisedGitPath::new(self.path)?;
 
         if config.repos.contains(&normalised_path.to_string()) {
             return Err(format!("Repo already added: {}", normalised_path).into());
@@ -137,13 +131,18 @@ impl AuthenticatedCommand for AddRepoCommand {
 #[async_trait]
 impl AuthenticatedCommand for RemoveRepoCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let normalised_path = utils::NormalisedPath::new(self.path)?;
+        let repo_path = match utils::NormalisedGitPath::new(self.path) {
+            Ok(normalised_path) => normalised_path.to_string(),
+            Err(utils::NormalisedPathError::PathNotGitRepository(path)) => path,
+            Err(e) => return Err(e.into()),
+        };
 
-        if !config.repos.contains(&normalised_path.to_string()) {
+        if !config.repos.contains(&repo_path) {
             println!("Repository was never registered with BitPet, so nothing to remove!");
             return Ok(());
         }
-        remove_repo(config, normalised_path.to_string())?;
+
+        remove_repo(config, repo_path)?;
         println!("Removed repository successfully!");
         Ok(())
     }
@@ -168,12 +167,9 @@ impl AuthenticatedCommand for ListReposCommand {
         }
 
         config.repos.retain(|repo| {
-            let normalised_path = utils::NormalisedPath::new(repo.clone());
+            let normalised_path = utils::NormalisedGitPath::new(repo.clone());
             match normalised_path {
                 Ok(normalised_path) => {
-                    if !git::is_git(&normalised_path) {
-                        return false;
-                    }
                     println!("- {}", normalised_path);
                     true
                 }
