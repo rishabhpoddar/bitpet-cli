@@ -2,7 +2,7 @@ use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Get the mood, health, and other details of your pet
+    // Get the mood, health, and other details of your pet
     Status {},
 
     /// Feed your pet (based on your git commits since last feed)
@@ -31,7 +31,6 @@ pub enum Commands {
 
     /// Logout from your BitPet account
     Logout {},
-
     /// Get the user information about who is logged in
     Whoami {},
 

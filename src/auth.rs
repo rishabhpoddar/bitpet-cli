@@ -1,6 +1,7 @@
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
 use crate::constants::{MOCK_USER_CODE, MOCK_USER_EMAIL, MOCK_USER_TOKEN, MOCK_USER_USERNAME};
+// use crate::http_mocking::LoggingMiddleware;
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::json;
@@ -33,16 +34,20 @@ struct LoginResponse {
     token: String,
 }
 
-/// Execute a command that requires authentication
-pub fn execute_authenticated_command<F>(config: &mut Config, operation: F) -> CommandResult
+// Execute a command that requires authentication
+pub async fn execute_authenticated_command<F>(config: &mut Config, operation: F) -> CommandResult
 where
-    F: FnOnce(UserInfo, &mut Config) -> CommandResult,
+    F: for<'a> FnOnce(
+        UserInfo,
+        &'a mut Config,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = CommandResult> + 'a>>,
 {
     let user = require_auth(&config)?;
-    operation(user, config)
+    operation(user, config).await
 }
 
-pub fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
+pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
     println!("Logging out user with email: {}", user.email);
 
     if user.email == MOCK_USER_EMAIL {
@@ -52,11 +57,12 @@ pub fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
         return Ok(());
     }
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .post("https://api.bitpet.dev/v1/auth/logout")
         .bearer_auth(user.token)
-        .send()?;
+        .send()
+        .await?;
 
     if response.status().is_success() || response.status().as_u16() == 401 {
         config.user = None;
@@ -64,12 +70,12 @@ pub fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
         println!("Logged out successfully!");
         Ok(())
     } else {
-        let error_text = response.text()?;
+        let error_text = response.text().await?;
         Err(format!("Logout failed: {}", error_text).into())
     }
 }
 
-pub fn do_login(config: &mut Config) -> CommandResult {
+pub async fn do_login(config: &mut Config) -> CommandResult {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::rng();
     let one_char = || CHARSET[rng.random_range(0..CHARSET.len())] as char;
@@ -106,17 +112,21 @@ pub fn do_login(config: &mut Config) -> CommandResult {
         return Ok(());
     }
 
-    let client = reqwest::blocking::Client::new();
+    // let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+    //     .with(LoggingMiddleware)
+    //     .build();
+    let client = reqwest::Client::new();
     let response = client
         .post("https://api.bitpet.dev/v1/auth/login")
         .json(&json!({
             "otp": random_string,
             "code": code
         }))
-        .send()?;
+        .send()
+        .await?;
 
     if response.status().is_success() {
-        let login_response: LoginResponse = response.json()?;
+        let login_response: LoginResponse = response.json().await?;
 
         // Save user info to config
         config.user = Some(UserInfo {
@@ -129,7 +139,7 @@ pub fn do_login(config: &mut Config) -> CommandResult {
         println!("Successfully logged in as: {}", login_response.email);
         Ok(())
     } else {
-        let error_text = response.text()?;
+        let error_text = response.text().await?;
         Err(format!("Login failed: {}", error_text).into())
     }
 }
