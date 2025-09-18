@@ -1,6 +1,6 @@
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
-use crate::constants::{MOCK_USER_CODE, MOCK_USER_EMAIL, MOCK_USER_TOKEN, MOCK_USER_USERNAME};
+use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
 use crate::http_mocking::MockingMiddleware;
 use async_trait::async_trait;
 use rand::Rng;
@@ -50,18 +50,11 @@ pub async fn execute_authenticated_command(
 pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
     println!("Logging out user with email: {}", user.email);
 
-    if user.email == MOCK_USER_EMAIL {
-        config.user = None;
-        config.save()?;
-        println!("Logged out successfully!");
-        return Ok(());
-    }
-
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev/v1/auth/logout")
+        .post("https://api.bitpet.dev".to_owned() + LOGOUT_PATH)
         .bearer_auth(user.token)
         .send()
         .await?;
@@ -102,26 +95,14 @@ pub async fn do_login(config: &mut Config) -> CommandResult {
     let code = code.trim();
     println!("\nLogging in...");
 
-    if code == MOCK_USER_CODE {
-        config.user = Some(UserInfo {
-            username: MOCK_USER_USERNAME.to_string(),
-            email: MOCK_USER_EMAIL.to_string(),
-            token: MOCK_USER_TOKEN.to_string(),
-        });
-        config.save()?;
-
-        println!("Successfully logged in as: {}", MOCK_USER_EMAIL);
-        return Ok(());
-    }
-
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev/v1/auth/login")
+        .post("https://api.bitpet.dev".to_owned() + LOGIN_PATH)
         .body(serde_json::to_string(&json!({
-            "otp": random_string,
-            "code": code
+            "url_code": random_string,
+            "user_code": code
         }))?)
         .send()
         .await?;
