@@ -140,7 +140,8 @@ impl AuthenticatedCommand for RemoveRepoCommand {
         let normalised_path = utils::NormalisedPath::new(self.path)?;
 
         if !config.repos.contains(&normalised_path.to_string()) {
-            return Err(format!("Repo not found: {}", normalised_path).into());
+            println!("Repository was never registered with BitPet, so nothing to remove!");
+            return Ok(());
         }
         remove_repo(config, normalised_path.to_string())?;
         println!("Removed repository successfully!");
