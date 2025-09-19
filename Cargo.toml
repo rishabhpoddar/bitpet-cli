@@ -10,6 +10,8 @@ name = "pet"
 path = "src/main.rs"
 
 [lib]
+name = "bitpet_cli"
+path = "src/trace_errors_macro.rs"
 proc-macro = true
 
 [dependencies]
