@@ -1,7 +1,7 @@
+use crate::error;
 use crate::git;
 use colored::*;
 use std::env;
-use std::error::Error;
 
 #[derive(Debug)]
 pub struct NormalisedGitPath {
@@ -16,19 +16,39 @@ impl std::fmt::Display for NormalisedGitPath {
 
 #[derive(Debug)]
 pub enum NormalisedPathError {
-    PathNotExists(String),
-    PathNotGitRepository(String),
-    Other(Box<dyn std::error::Error>),
+    PathNotExists(String, String),
+    PathNotGitRepository(String, String),
+    Other(Box<dyn std::error::Error>, String),
+}
+
+impl error::WithBacktrace for NormalisedPathError {
+    fn backtrace(&self) -> String {
+        match self {
+            NormalisedPathError::PathNotExists(_, s)
+            | NormalisedPathError::PathNotGitRepository(_, s)
+            | NormalisedPathError::Other(_, s) => s.clone(),
+        }
+    }
+}
+
+impl error::CustomErrorTrait for NormalisedPathError {}
+
+impl From<NormalisedPathError> for Box<dyn error::CustomErrorTrait> {
+    fn from(error: NormalisedPathError) -> Self {
+        Box::new(error)
+    }
 }
 
 impl std::fmt::Display for NormalisedPathError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NormalisedPathError::PathNotExists(path) => write!(f, "Path does not exist: {}", path),
-            NormalisedPathError::PathNotGitRepository(path) => {
+            NormalisedPathError::PathNotExists(path, _) => {
+                write!(f, "Path does not exist: {}", path)
+            }
+            NormalisedPathError::PathNotGitRepository(path, _) => {
                 write!(f, "Provided path is not a Git repository: {}", path)
             }
-            NormalisedPathError::Other(error) => write!(f, "{}", error),
+            NormalisedPathError::Other(error, _) => write!(f, "{}", error),
         }
     }
 }
@@ -40,31 +60,44 @@ impl NormalisedGitPath {
     // OK cause this is client code anyway.
     pub fn new(path: String) -> Result<NormalisedGitPath, NormalisedPathError> {
         if path.is_empty() {
-            return Err(NormalisedPathError::PathNotExists(path));
+            return Err(NormalisedPathError::PathNotExists(
+                path,
+                std::backtrace::Backtrace::capture().to_string(),
+            ));
         }
         let path = if std::path::Path::new(&path).is_absolute() {
             std::path::PathBuf::from(path)
         } else {
             env::current_dir()
-                .map_err(|e| NormalisedPathError::Other(e.into()))?
+                .map_err(|e| {
+                    NormalisedPathError::Other(
+                        e.into(),
+                        std::backtrace::Backtrace::capture().to_string(),
+                    )
+                })?
                 .join(path)
         };
 
         if !path.exists() {
             return Err(NormalisedPathError::PathNotExists(
                 path.display().to_string(),
+                std::backtrace::Backtrace::capture().to_string(),
             ));
         }
 
         let normalised_path = NormalisedGitPath {
-            path: path
-                .canonicalize()
-                .map_err(|e| NormalisedPathError::Other(e.into()))?,
+            path: path.canonicalize().map_err(|e| {
+                NormalisedPathError::Other(
+                    e.into(),
+                    std::backtrace::Backtrace::capture().to_string(),
+                )
+            })?,
         };
 
         if !git::is_git(&normalised_path) {
             return Err(NormalisedPathError::PathNotGitRepository(
                 normalised_path.path.display().to_string(),
+                std::backtrace::Backtrace::capture().to_string(),
             ));
         }
 
@@ -77,18 +110,9 @@ impl NormalisedGitPath {
 }
 
 /// Print an error and its full chain of causes
-pub fn print_error_chain(error: &dyn Error) {
+pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
     eprintln!("{}", format!("Error: {}", error).red());
 
-    let mut source = error.source();
-    let mut indent = 1;
-    while let Some(err) = source {
-        eprintln!(
-            "{}{}",
-            "  ".repeat(indent),
-            format!("Caused by: {}", err).yellow()
-        );
-        source = err.source();
-        indent += 1;
-    }
+    let backtrace = error.backtrace();
+    eprintln!("{}", format!("{}", backtrace).cyan());
 }

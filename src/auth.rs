@@ -1,6 +1,7 @@
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
 use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
+use crate::error;
 use crate::http_mocking::MockingMiddleware;
 use async_trait::async_trait;
 use rand::Rng;
@@ -10,18 +11,36 @@ use std::io::Write;
 use std::iter;
 
 fn require_auth(config: &Config) -> Result<UserInfo, AuthError> {
-    config.user.as_ref().cloned().ok_or(AuthError::NotLoggedIn)
+    config.user.as_ref().cloned().ok_or(AuthError::NotLoggedIn(
+        std::backtrace::Backtrace::capture().to_string(),
+    ))
 }
 
 #[derive(Debug)]
 enum AuthError {
-    NotLoggedIn,
+    NotLoggedIn(String),
+}
+
+impl error::WithBacktrace for AuthError {
+    fn backtrace(&self) -> String {
+        match self {
+            AuthError::NotLoggedIn(s) => s.clone(),
+        }
+    }
+}
+
+impl error::CustomErrorTrait for AuthError {}
+
+impl From<AuthError> for Box<dyn error::CustomErrorTrait> {
+    fn from(error: AuthError) -> Self {
+        Box::new(error)
+    }
 }
 
 impl std::fmt::Display for AuthError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AuthError::NotLoggedIn => write!(f, "Please login first using 'pet login'"),
+            AuthError::NotLoggedIn(_) => write!(f, "Please login first using 'pet login'"),
         }
     }
 }

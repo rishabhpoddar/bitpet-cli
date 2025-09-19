@@ -4,6 +4,7 @@ mod auth;
 mod commands;
 mod config;
 mod constants;
+mod error;
 mod git;
 mod http_mocking;
 mod utils;
@@ -21,7 +22,7 @@ struct Args {
 }
 
 /// Result type for command operations
-type CommandResult = Result<(), Box<dyn std::error::Error>>;
+type CommandResult = Result<(), Box<dyn error::CustomErrorTrait>>;
 
 // Command structs implementing AuthenticatedCommand trait
 struct LogoutCommand;
@@ -141,7 +142,7 @@ impl AuthenticatedCommand for RemoveRepoCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         let repo_path = match utils::NormalisedGitPath::new(self.path) {
             Ok(normalised_path) => normalised_path.to_string(),
-            Err(utils::NormalisedPathError::PathNotGitRepository(path)) => path,
+            Err(utils::NormalisedPathError::PathNotGitRepository(path, _)) => path,
             Err(e) => return Err(e.into()),
         };
 
@@ -156,7 +157,7 @@ impl AuthenticatedCommand for RemoveRepoCommand {
     }
 }
 
-fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn std::error::Error>> {
+fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn error::CustomErrorTrait>> {
     if config.repos.contains(&repo) {
         config
             .repos
@@ -192,7 +193,7 @@ async fn main() {
     let mut config = match Config::load() {
         Ok(config) => config,
         Err(e) => {
-            utils::print_error_chain(&e);
+            utils::print_error_chain(e.into());
             std::process::exit(1);
         }
     };
@@ -221,7 +222,7 @@ async fn main() {
 
     // Handle any errors from config operations
     if let Err(e) = result {
-        utils::print_error_chain(&*e);
+        utils::print_error_chain(e);
         std::process::exit(1);
     }
 }
