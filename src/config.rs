@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+use crate::utils;
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 #[serde(default)]
 pub struct Config {
@@ -60,6 +62,30 @@ impl Config {
         fs::write(&config_path, content).map_err(|e| ConfigError::IoError(e))?;
 
         Ok(())
+    }
+
+    pub fn get_valid_normalised_paths_and_save(
+        &mut self,
+    ) -> Result<Vec<utils::NormalisedGitPath>, ConfigError> {
+        let mut valid_repos = Vec::new();
+        let mut valid_paths = Vec::new();
+
+        for repo in &self.repos {
+            match utils::NormalisedGitPath::new(repo.clone()) {
+                Ok(normalised_path) => {
+                    valid_repos.push(repo.clone());
+                    valid_paths.push(normalised_path);
+                }
+                Err(_) => {
+                    // Skip invalid repositories
+                }
+            }
+        }
+
+        self.repos = valid_repos;
+        self.save()?;
+
+        Ok(valid_paths)
     }
 }
 

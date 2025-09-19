@@ -95,9 +95,18 @@ impl AuthenticatedCommand for StatusCommand {
 
 #[async_trait]
 impl AuthenticatedCommand for FeedCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+        let normalised_paths = config.get_valid_normalised_paths_and_save()?;
+        if normalised_paths.is_empty() {
+            println!("No Git repositories added yet!");
+            return Ok(());
+        }
+
+        for repo in normalised_paths {
+            let _ = git::get_commits_for_today_since_last_commit(&repo, None)?;
+        }
+
         // TODO: Implement feed logic
-        println!("Feed functionality not yet implemented");
         Ok(())
     }
 }
@@ -161,22 +170,16 @@ fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn std::err
 #[async_trait]
 impl AuthenticatedCommand for ListReposCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        if config.repos.is_empty() {
+        let normalised_paths = config.get_valid_normalised_paths_and_save()?;
+
+        if normalised_paths.is_empty() {
             println!("No Git repositories added yet");
             return Ok(());
         }
 
-        config.repos.retain(|repo| {
-            let normalised_path = utils::NormalisedGitPath::new(repo.clone());
-            match normalised_path {
-                Ok(normalised_path) => {
-                    println!("- {}", normalised_path);
-                    true
-                }
-                Err(_e) => false,
-            }
-        });
-        config.save()?;
+        for normalised_path in normalised_paths {
+            println!("- {}", normalised_path);
+        }
 
         Ok(())
     }
