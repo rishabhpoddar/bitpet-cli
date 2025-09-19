@@ -38,7 +38,7 @@ fn get_git_username() -> Result<String, GitError> {
                 if username.is_empty() {
                     Err(GitError::UnableToFetchGitUsername(
                         "Git username not configured in your system.".to_string(),
-                        std::backtrace::Backtrace::capture().to_string(),
+                        Vec::new(),
                     ))
                 } else {
                     // Cache the username (this can only be set once)
@@ -49,13 +49,13 @@ fn get_git_username() -> Result<String, GitError> {
                 let error_message = String::from_utf8_lossy(&output.stderr);
                 Err(GitError::UnableToFetchGitUsername(
                     error_message.to_string(),
-                    std::backtrace::Backtrace::capture().to_string(),
+                    Vec::new(),
                 ))
             }
         }
         Err(e) => Err(GitError::UnableToFetchGitUsername(
             e.to_string(),
-            std::backtrace::Backtrace::capture().to_string(),
+            Vec::new(),
         )),
     }
 }
@@ -67,15 +67,22 @@ pub struct Commit {
 
 #[derive(Debug)]
 pub enum GitError {
-    UnableToFetchGitUsername(String, String),
-    PathError(utils::NormalisedPathError, String),
+    UnableToFetchGitUsername(String, Vec<String>),
+    PathError(utils::NormalisedPathError, Vec<String>),
 }
 
 impl error::WithBacktrace for GitError {
-    fn backtrace(&self) -> String {
+    fn backtrace(&self) -> &Vec<String> {
         match self {
-            GitError::UnableToFetchGitUsername(_, s) => s.clone(),
-            GitError::PathError(_, s) => s.clone(),
+            GitError::UnableToFetchGitUsername(_, s) => s,
+            GitError::PathError(_, s) => s,
+        }
+    }
+
+    fn add_context(&mut self, function_name: String) {
+        match self {
+            GitError::UnableToFetchGitUsername(_, s) => s.push(function_name),
+            GitError::PathError(_, s) => s.push(function_name),
         }
     }
 }
@@ -101,7 +108,7 @@ impl std::error::Error for GitError {}
 
 impl From<utils::NormalisedPathError> for GitError {
     fn from(error: utils::NormalisedPathError) -> Self {
-        GitError::PathError(error, std::backtrace::Backtrace::capture().to_string())
+        GitError::PathError(error, Vec::new())
     }
 }
 

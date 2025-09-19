@@ -16,17 +16,25 @@ impl std::fmt::Display for NormalisedGitPath {
 
 #[derive(Debug)]
 pub enum NormalisedPathError {
-    PathNotExists(String, String),
-    PathNotGitRepository(String, String),
-    Other(Box<dyn std::error::Error>, String),
+    PathNotExists(String, Vec<String>),
+    PathNotGitRepository(String, Vec<String>),
+    Other(Box<dyn std::error::Error>, Vec<String>),
 }
 
 impl error::WithBacktrace for NormalisedPathError {
-    fn backtrace(&self) -> String {
+    fn backtrace(&self) -> &Vec<String> {
         match self {
             NormalisedPathError::PathNotExists(_, s)
             | NormalisedPathError::PathNotGitRepository(_, s)
-            | NormalisedPathError::Other(_, s) => s.clone(),
+            | NormalisedPathError::Other(_, s) => s,
+        }
+    }
+
+    fn add_context(&mut self, function_name: String) {
+        match self {
+            NormalisedPathError::PathNotExists(_, s)
+            | NormalisedPathError::PathNotGitRepository(_, s)
+            | NormalisedPathError::Other(_, s) => s.push(function_name),
         }
     }
 }
@@ -60,44 +68,33 @@ impl NormalisedGitPath {
     // OK cause this is client code anyway.
     pub fn new(path: String) -> Result<NormalisedGitPath, NormalisedPathError> {
         if path.is_empty() {
-            return Err(NormalisedPathError::PathNotExists(
-                path,
-                std::backtrace::Backtrace::capture().to_string(),
-            ));
+            return Err(NormalisedPathError::PathNotExists(path, Vec::new()));
         }
         let path = if std::path::Path::new(&path).is_absolute() {
             std::path::PathBuf::from(path)
         } else {
             env::current_dir()
-                .map_err(|e| {
-                    NormalisedPathError::Other(
-                        e.into(),
-                        std::backtrace::Backtrace::capture().to_string(),
-                    )
-                })?
+                .map_err(|e| NormalisedPathError::Other(e.into(), Vec::new()))?
                 .join(path)
         };
 
         if !path.exists() {
             return Err(NormalisedPathError::PathNotExists(
                 path.display().to_string(),
-                std::backtrace::Backtrace::capture().to_string(),
+                Vec::new(),
             ));
         }
 
         let normalised_path = NormalisedGitPath {
-            path: path.canonicalize().map_err(|e| {
-                NormalisedPathError::Other(
-                    e.into(),
-                    std::backtrace::Backtrace::capture().to_string(),
-                )
-            })?,
+            path: path
+                .canonicalize()
+                .map_err(|e| NormalisedPathError::Other(e.into(), Vec::new()))?,
         };
 
         if !git::is_git(&normalised_path) {
             return Err(NormalisedPathError::PathNotGitRepository(
                 normalised_path.path.display().to_string(),
-                std::backtrace::Backtrace::capture().to_string(),
+                Vec::new(),
             ));
         }
 
@@ -114,5 +111,10 @@ pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
     eprintln!("{}", format!("Error: {}", error).red());
 
     let backtrace = error.backtrace();
-    eprintln!("{}", format!("{}", backtrace).cyan());
+    if !backtrace.is_empty() {
+        eprintln!("{}", "Call stack:".cyan());
+        for (i, func_name) in backtrace.iter().enumerate() {
+            eprintln!("  {}: {}", i + 1, func_name.cyan());
+        }
+    }
 }

@@ -25,15 +25,11 @@ impl Config {
     /// Get the path to the config file
     pub fn config_path() -> Result<PathBuf, ConfigError> {
         let config_dir = dirs::config_dir()
-            .ok_or(ConfigError::NoConfigDir(
-                std::backtrace::Backtrace::capture().to_string(),
-            ))?
+            .ok_or(ConfigError::NoConfigDir(Vec::new()))?
             .join("bitpet");
 
         // Ensure the directory exists
-        fs::create_dir_all(&config_dir).map_err(|e| {
-            ConfigError::IoError(e, std::backtrace::Backtrace::capture().to_string())
-        })?;
+        fs::create_dir_all(&config_dir).map_err(|e| ConfigError::IoError(e, Vec::new()))?;
 
         Ok(config_dir.join("config.json"))
     }
@@ -49,13 +45,11 @@ impl Config {
             return Ok(default_config);
         }
 
-        let content = fs::read_to_string(&config_path).map_err(|e| {
-            ConfigError::IoError(e, std::backtrace::Backtrace::capture().to_string())
-        })?;
+        let content =
+            fs::read_to_string(&config_path).map_err(|e| ConfigError::IoError(e, Vec::new()))?;
 
-        let config: Config = serde_json::from_str(&content).map_err(|e| {
-            ConfigError::ParseError(e, std::backtrace::Backtrace::capture().to_string())
-        })?;
+        let config: Config =
+            serde_json::from_str(&content).map_err(|e| ConfigError::ParseError(e, Vec::new()))?;
 
         Ok(config)
     }
@@ -64,13 +58,10 @@ impl Config {
     pub fn save(&self) -> Result<(), ConfigError> {
         let config_path = Self::config_path()?;
 
-        let content = serde_json::to_string_pretty(self).map_err(|e| {
-            ConfigError::SerializeError(e, std::backtrace::Backtrace::capture().to_string())
-        })?;
+        let content = serde_json::to_string_pretty(self)
+            .map_err(|e| ConfigError::SerializeError(e, Vec::new()))?;
 
-        fs::write(&config_path, content).map_err(|e| {
-            ConfigError::IoError(e, std::backtrace::Backtrace::capture().to_string())
-        })?;
+        fs::write(&config_path, content).map_err(|e| ConfigError::IoError(e, Vec::new()))?;
 
         Ok(())
     }
@@ -102,10 +93,10 @@ impl Config {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    NoConfigDir(String),
-    IoError(std::io::Error, String),
-    ParseError(serde_json::Error, String),
-    SerializeError(serde_json::Error, String),
+    NoConfigDir(Vec<String>),
+    IoError(std::io::Error, Vec<String>),
+    ParseError(serde_json::Error, Vec<String>),
+    SerializeError(serde_json::Error, Vec<String>),
 }
 
 impl std::fmt::Display for ConfigError {
@@ -122,12 +113,21 @@ impl std::fmt::Display for ConfigError {
 impl std::error::Error for ConfigError {}
 
 impl error::WithBacktrace for ConfigError {
-    fn backtrace(&self) -> String {
+    fn backtrace(&self) -> &Vec<String> {
         match self {
             ConfigError::NoConfigDir(s)
             | ConfigError::IoError(_, s)
             | ConfigError::ParseError(_, s)
-            | ConfigError::SerializeError(_, s) => s.clone(),
+            | ConfigError::SerializeError(_, s) => s,
+        }
+    }
+
+    fn add_context(&mut self, function_name: String) {
+        match self {
+            ConfigError::NoConfigDir(s)
+            | ConfigError::IoError(_, s)
+            | ConfigError::ParseError(_, s)
+            | ConfigError::SerializeError(_, s) => s.push(function_name),
         }
     }
 }

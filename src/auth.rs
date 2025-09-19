@@ -11,20 +11,28 @@ use std::io::Write;
 use std::iter;
 
 fn require_auth(config: &Config) -> Result<UserInfo, AuthError> {
-    config.user.as_ref().cloned().ok_or(AuthError::NotLoggedIn(
-        std::backtrace::Backtrace::capture().to_string(),
-    ))
+    config
+        .user
+        .as_ref()
+        .cloned()
+        .ok_or(AuthError::NotLoggedIn(Vec::new()))
 }
 
 #[derive(Debug)]
 enum AuthError {
-    NotLoggedIn(String),
+    NotLoggedIn(Vec<String>),
 }
 
 impl error::WithBacktrace for AuthError {
-    fn backtrace(&self) -> String {
+    fn backtrace(&self) -> &Vec<String> {
         match self {
-            AuthError::NotLoggedIn(s) => s.clone(),
+            AuthError::NotLoggedIn(s) => s,
+        }
+    }
+
+    fn add_context(&mut self, function_name: String) {
+        match self {
+            AuthError::NotLoggedIn(s) => s.push(function_name),
         }
     }
 }
