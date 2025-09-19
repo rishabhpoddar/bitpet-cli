@@ -1,5 +1,6 @@
 use crate::utils;
 use std::process::Command;
+use std::sync::OnceLock;
 
 // NOTE: These are blocking function calls and are being called in an async context. But it is
 // OK cause this is client code anyway.
@@ -17,7 +18,16 @@ pub fn is_git(normalised_path: &utils::NormalisedGitPath) -> bool {
     false
 }
 
+// Thread-safe, lazy-initialized static cache for git username
+static CACHED_GIT_USERNAME: OnceLock<String> = OnceLock::new();
+
 fn get_git_username() -> Result<String, String> {
+    // Try to get from cache first
+    if let Some(cached_username) = CACHED_GIT_USERNAME.get() {
+        return Ok(cached_username.clone());
+    }
+
+    // If not cached, fetch from git
     let output = Command::new("git").arg("config").arg("user.name").output();
 
     match output {
@@ -27,6 +37,8 @@ fn get_git_username() -> Result<String, String> {
                 if username.is_empty() {
                     Err("Git username not configured in your system.".to_string())
                 } else {
+                    // Cache the username (this can only be set once)
+                    let _ = CACHED_GIT_USERNAME.set(username.clone());
                     Ok(username)
                 }
             } else {
@@ -70,16 +82,9 @@ pub fn get_commits_for_today_since_last_commit(
     _normalised_path: &utils::NormalisedGitPath,
     _last_commit: Option<Commit>,
 ) -> Result<Vec<Commit>, GitError> {
-    let username = get_git_username();
+    let _username = get_git_username().map_err(|e| GitError::UnableToFetchGitUsername(e))?;
 
     // TODO: Then go to the path and run git commit, and get the ones from the username that are done today and after the last commit
 
-    match username {
-        Ok(username) => {
-            println!("Username: {}", username);
-            let commits = Vec::new();
-            Ok(commits)
-        }
-        Err(e) => Err(GitError::UnableToFetchGitUsername(e)),
-    }
+    Ok(Vec::new())
 }
