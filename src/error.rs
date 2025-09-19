@@ -4,17 +4,56 @@ pub trait WithBacktrace {
 
 pub trait CustomErrorTrait: std::error::Error + WithBacktrace {}
 
-impl From<String> for Box<dyn CustomErrorTrait> {
-    fn from(error: String) -> Self {
-        Box::new(StringError(
+/// Generic wrapper for any error type that adds backtrace support
+#[derive(Debug)]
+pub struct ErrorWithBacktrace<T> {
+    error: T,
+    backtrace: String,
+}
+
+impl<T> ErrorWithBacktrace<T> {
+    pub fn new(error: T) -> Self {
+        Self {
             error,
-            std::backtrace::Backtrace::capture().to_string(),
-        ))
+            backtrace: std::backtrace::Backtrace::capture().to_string(),
+        }
     }
 }
 
+impl<T: std::fmt::Display> std::fmt::Display for ErrorWithBacktrace<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.error)
+    }
+}
+
+impl<T: std::error::Error + 'static> std::error::Error for ErrorWithBacktrace<T> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
+
+impl<T> WithBacktrace for ErrorWithBacktrace<T> {
+    fn backtrace(&self) -> String {
+        self.backtrace.clone()
+    }
+}
+
+impl<T: std::error::Error + 'static> CustomErrorTrait for ErrorWithBacktrace<T> {}
+
+/// Macro to generate From implementations for error types
+macro_rules! impl_custom_error_from {
+    ($error_type:ty) => {
+        impl From<$error_type> for Box<dyn CustomErrorTrait> {
+            fn from(error: $error_type) -> Self {
+                Box::new(ErrorWithBacktrace::new(error))
+            }
+        }
+    };
+}
+
+/// Wrapper for String to make it implement Error
 #[derive(Debug)]
-struct StringError(String, String);
+pub struct StringError(pub String);
 
 impl std::fmt::Display for StringError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -24,98 +63,14 @@ impl std::fmt::Display for StringError {
 
 impl std::error::Error for StringError {}
 
-impl WithBacktrace for StringError {
-    fn backtrace(&self) -> String {
-        self.1.clone()
+// Special implementation for String since it doesn't implement Error
+impl From<String> for Box<dyn CustomErrorTrait> {
+    fn from(error: String) -> Self {
+        Box::new(ErrorWithBacktrace::new(StringError(error)))
     }
 }
 
-impl CustomErrorTrait for StringError {}
-
-#[derive(Debug)]
-struct ReqwestMiddlewareError(reqwest_middleware::Error, String);
-
-impl From<reqwest_middleware::Error> for Box<dyn CustomErrorTrait> {
-    fn from(error: reqwest_middleware::Error) -> Self {
-        Box::new(ReqwestMiddlewareError(
-            error,
-            std::backtrace::Backtrace::capture().to_string(),
-        ))
-    }
-}
-
-impl std::fmt::Display for ReqwestMiddlewareError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for ReqwestMiddlewareError {}
-
-impl WithBacktrace for ReqwestMiddlewareError {
-    fn backtrace(&self) -> String {
-        self.1.clone()
-    }
-}
-
-impl CustomErrorTrait for ReqwestMiddlewareError {}
-
-/////////////////////////////////////////////
-
-#[derive(Debug)]
-struct ReqwestError(reqwest::Error, String);
-
-impl From<reqwest::Error> for Box<dyn CustomErrorTrait> {
-    fn from(error: reqwest::Error) -> Self {
-        Box::new(ReqwestError(
-            error,
-            std::backtrace::Backtrace::capture().to_string(),
-        ))
-    }
-}
-
-impl std::fmt::Display for ReqwestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for ReqwestError {}
-
-impl WithBacktrace for ReqwestError {
-    fn backtrace(&self) -> String {
-        self.1.clone()
-    }
-}
-
-impl CustomErrorTrait for ReqwestError {}
-
-/////////////////////////////////////////////
-
-#[derive(Debug)]
-struct SerdeJsonError(serde_json::Error, String);
-
-impl From<serde_json::Error> for Box<dyn CustomErrorTrait> {
-    fn from(error: serde_json::Error) -> Self {
-        Box::new(SerdeJsonError(
-            error,
-            std::backtrace::Backtrace::capture().to_string(),
-        ))
-    }
-}
-
-impl std::fmt::Display for SerdeJsonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for SerdeJsonError {}
-
-impl WithBacktrace for SerdeJsonError {
-    fn backtrace(&self) -> String {
-        self.1.clone()
-    }
-}
-
-impl CustomErrorTrait for SerdeJsonError {}
+// Generate From implementations for error types that already implement Error
+impl_custom_error_from!(reqwest_middleware::Error);
+impl_custom_error_from!(reqwest::Error);
+impl_custom_error_from!(serde_json::Error);
