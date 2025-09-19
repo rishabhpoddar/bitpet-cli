@@ -11,6 +11,7 @@ mod utils;
 
 use async_trait::async_trait;
 use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_command};
+use bitpet_cli::track_errors;
 use commands::Commands;
 use config::{Config, UserInfo};
 
@@ -41,6 +42,7 @@ struct RemoveRepoCommand {
 struct ListReposCommand;
 
 // Command handlers
+#[track_errors]
 async fn handle_login(config: &mut Config) -> CommandResult {
     if let Some(_user) = &config.user {
         return Err(format!("You are already logged in with email: {}", _user.email).into());
@@ -123,18 +125,23 @@ impl AuthenticatedCommand for PlayCommand {
 #[async_trait]
 impl AuthenticatedCommand for AddRepoCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let normalised_path = utils::NormalisedGitPath::new(self.path)?;
-
-        if config.repos.contains(&normalised_path.to_string()) {
-            return Err(format!("Repo already added: {}", normalised_path).into());
-        }
-
-        config.repos.push(normalised_path.to_string());
-        config.save()?;
-
-        println!("Added new Git repository successfully!");
-        Ok(())
+        add_repo_impl(self.path, config).await
     }
+}
+
+#[track_errors]
+async fn add_repo_impl(path: String, config: &mut Config) -> CommandResult {
+    let normalised_path = utils::NormalisedGitPath::new(path)?;
+
+    if config.repos.contains(&normalised_path.to_string()) {
+        return Err(format!("Repo already added: {}", normalised_path).into());
+    }
+
+    config.repos.push(normalised_path.to_string());
+    config.save()?;
+
+    println!("Added new Git repository successfully!");
+    Ok(())
 }
 
 #[async_trait]

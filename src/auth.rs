@@ -4,6 +4,7 @@ use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
 use crate::error;
 use crate::http_mocking::MockingMiddleware;
 use async_trait::async_trait;
+use bitpet_cli::track_errors;
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::json;
@@ -66,6 +67,8 @@ struct LoginResponse {
 pub trait AuthenticatedCommand {
     async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult;
 }
+
+#[track_errors]
 pub async fn execute_authenticated_command(
     config: &mut Config,
     command: impl AuthenticatedCommand,

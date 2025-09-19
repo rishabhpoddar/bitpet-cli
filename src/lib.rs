@@ -4,7 +4,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{ItemFn, parse_macro_input};
+use syn::{ItemFn, parse_macro_input, Item, ItemMod, ImplItem, ImplItemFn};
 
 /// Procedural macro that automatically adds function names to error backtraces
 ///
@@ -24,9 +24,14 @@ pub fn track_errors(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the function
     let input_fn = parse_macro_input!(item as ItemFn);
 
-    // Extract function name
+    // Extract function name and location info
     let fn_name = &input_fn.sig.ident;
     let fn_name_str = fn_name.to_string();
+
+    // Generate location info that will be computed at runtime
+    let location_info = quote! {
+        format!("{}:{} in {}", file!(), line!(), #fn_name_str)
+    };
 
     // Extract function components
     let fn_vis = &input_fn.vis;
@@ -35,6 +40,12 @@ pub fn track_errors(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Check if this is an async function
     let is_async = fn_sig.asyncness.is_some();
+
+    // Extract the function output type if present (e.g., Result<...>)
+    let output_ty_opt = match &fn_sig.output {
+        syn::ReturnType::Type(_, ty) => Some((**ty).clone()),
+        _ => None,
+    };
 
     // Check if the return type is a Result that could contain our CustomErrorTrait
     let has_result_return = match &fn_sig.output {
@@ -52,19 +63,21 @@ pub fn track_errors(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     // Generate the wrapped function
+    let output_ty = output_ty_opt.expect("Expected a return type for function");
     let expanded = if is_async {
         // For async functions
         quote! {
             #fn_vis #fn_sig {
-                let __function_name = #fn_name_str;
+                let __location_info = #location_info;
 
                 async move {
-                    let __result = async move #fn_block.await;
+                    // Execute the original function body and capture its Result with explicit type
+                    let __result: #output_ty = async move #fn_block.await;
 
                     match __result {
                         Ok(value) => Ok(value),
                         Err(mut error) => {
-                            error.add_context(__function_name.to_string());
+                            error.add_context(__location_info);
                             Err(error)
                         }
                     }
@@ -75,19 +88,18 @@ pub fn track_errors(_attr: TokenStream, item: TokenStream) -> TokenStream {
         // For regular functions
         quote! {
             #fn_vis #fn_sig {
-                let __function_name = #fn_name_str;
+                let __location_info = #location_info;
 
-                (|| -> _ {
-                    let __result = (|| #fn_block)();
+                // Execute the original function body and capture its Result with explicit type
+                let __result: #output_ty = (|| #fn_block)();
 
-                    match __result {
-                        Ok(value) => Ok(value),
-                        Err(mut error) => {
-                            error.add_context(__function_name.to_string());
-                            Err(error)
-                        }
+                match __result {
+                    Ok(value) => Ok(value),
+                    Err(mut error) => {
+                        error.add_context(__location_info);
+                        Err(error)
                     }
-                })()
+                }
             }
         }
     };
@@ -119,9 +131,14 @@ pub fn track_errors_with_name(attr: TokenStream, item: TokenStream) -> TokenStre
     // Parse the function
     let input_fn = parse_macro_input!(item as ItemFn);
 
-    // Use custom name or fall back to function name
+    // Use custom name or fall back to function name, and add location info
     let fn_name = &input_fn.sig.ident;
-    let name_to_use = custom_name.unwrap_or_else(|| fn_name.to_string());
+    let base_name = custom_name.unwrap_or_else(|| fn_name.to_string());
+
+    // Generate location info that will be computed at runtime
+    let location_info = quote! {
+        format!("{}:{} in {}", file!(), line!(), #base_name)
+    };
 
     // Extract function components
     let fn_vis = &input_fn.vis;
@@ -130,6 +147,12 @@ pub fn track_errors_with_name(attr: TokenStream, item: TokenStream) -> TokenStre
 
     // Check if this is an async function
     let is_async = fn_sig.asyncness.is_some();
+
+    // Extract the function output type if present (e.g., Result<...>)
+    let output_ty_opt = match &fn_sig.output {
+        syn::ReturnType::Type(_, ty) => Some((**ty).clone()),
+        _ => None,
+    };
 
     // Check if the return type is a Result
     let has_result_return = match &fn_sig.output {
@@ -142,18 +165,20 @@ pub fn track_errors_with_name(attr: TokenStream, item: TokenStream) -> TokenStre
     }
 
     // Generate the wrapped function
+    let output_ty = output_ty_opt.expect("Expected a return type for function");
     let expanded = if is_async {
         quote! {
             #fn_vis #fn_sig {
-                let __function_name = #name_to_use;
+                let __location_info = #location_info;
 
                 async move {
-                    let __result = async move #fn_block.await;
+                    // Execute the original function body and capture its Result with explicit type
+                    let __result: #output_ty = async move #fn_block.await;
 
                     match __result {
                         Ok(value) => Ok(value),
                         Err(mut error) => {
-                            error.add_context(__function_name.to_string());
+                            error.add_context(__location_info);
                             Err(error)
                         }
                     }
@@ -163,19 +188,18 @@ pub fn track_errors_with_name(attr: TokenStream, item: TokenStream) -> TokenStre
     } else {
         quote! {
             #fn_vis #fn_sig {
-                let __function_name = #name_to_use;
+                let __location_info = #location_info;
 
-                (|| -> _ {
-                    let __result = (|| #fn_block)();
+                // Execute the original function body and capture its Result with explicit type
+                let __result: #output_ty = (|| #fn_block)();
 
-                    match __result {
-                        Ok(value) => Ok(value),
-                        Err(mut error) => {
-                            error.add_context(__function_name.to_string());
-                            Err(error)
-                        }
+                match __result {
+                    Ok(value) => Ok(value),
+                    Err(mut error) => {
+                        error.add_context(__location_info);
+                        Err(error)
                     }
-                })()
+                }
             }
         }
     };

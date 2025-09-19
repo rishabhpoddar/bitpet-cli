@@ -1,5 +1,7 @@
 use crate::error;
+use crate::error::WithBacktrace;
 use crate::git;
+use bitpet_cli::track_errors;
 use colored::*;
 use std::env;
 
@@ -66,6 +68,7 @@ impl std::error::Error for NormalisedPathError {}
 impl NormalisedGitPath {
     // NOTE: These are blocking function calls and are being called in an async context. But it is
     // OK cause this is client code anyway.
+    #[track_errors]
     pub fn new(path: String) -> Result<NormalisedGitPath, NormalisedPathError> {
         if path.is_empty() {
             return Err(NormalisedPathError::PathNotExists(path, Vec::new()));
