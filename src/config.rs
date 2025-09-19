@@ -1,3 +1,5 @@
+use crate::error::WithBacktrace;
+use bitpet_cli::track_errors;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -23,6 +25,7 @@ pub struct UserInfo {
 
 impl Config {
     /// Get the path to the config file
+    #[track_errors]
     pub fn config_path() -> Result<PathBuf, ConfigError> {
         let config_dir = dirs::config_dir()
             .ok_or(ConfigError::NoConfigDir(Vec::new()))?
@@ -35,6 +38,7 @@ impl Config {
     }
 
     /// Load config from file, creating a default one if it doesn't exist
+    #[track_errors]
     pub fn load() -> Result<Config, ConfigError> {
         let config_path = Self::config_path()?;
 
@@ -55,6 +59,7 @@ impl Config {
     }
 
     /// Save config to file
+    #[track_errors]
     pub fn save(&self) -> Result<(), ConfigError> {
         let config_path = Self::config_path()?;
 
@@ -66,6 +71,7 @@ impl Config {
         Ok(())
     }
 
+    #[track_errors]
     pub fn get_valid_normalised_paths_and_save(
         &mut self,
     ) -> Result<Vec<utils::NormalisedGitPath>, ConfigError> {

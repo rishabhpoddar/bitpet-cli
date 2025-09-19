@@ -3,8 +3,12 @@ use std::process::Command;
 use std::sync::OnceLock;
 
 use crate::error;
+use crate::error::WithBacktrace;
+use bitpet_cli::track_errors;
 // NOTE: These are blocking function calls and are being called in an async context. But it is
 // OK cause this is client code anyway.
+
+#[track_errors]
 pub fn is_git(normalised_path: &utils::NormalisedGitPath) -> bool {
     let mut path = normalised_path.path();
     if path.join(".git").exists() {
@@ -22,6 +26,7 @@ pub fn is_git(normalised_path: &utils::NormalisedGitPath) -> bool {
 // Thread-safe, lazy-initialized static cache for git username
 static CACHED_GIT_USERNAME: OnceLock<String> = OnceLock::new();
 
+#[track_errors]
 fn get_git_username() -> Result<String, GitError> {
     // Try to get from cache first
     if let Some(cached_username) = CACHED_GIT_USERNAME.get() {
@@ -112,6 +117,7 @@ impl From<utils::NormalisedPathError> for GitError {
     }
 }
 
+#[track_errors]
 pub fn get_commits_for_today_since_last_commit(
     _normalised_path: &utils::NormalisedGitPath,
     _last_commit: Option<Commit>,

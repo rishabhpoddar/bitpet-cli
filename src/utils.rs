@@ -104,12 +104,14 @@ impl NormalisedGitPath {
         Ok(normalised_path)
     }
 
+    #[track_errors]
     pub fn path(&self) -> &std::path::Path {
         &self.path
     }
 }
 
 /// Print an error and its full chain of causes
+#[track_errors]
 pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
     eprintln!("{}", format!("Error: {}", error).red());
 

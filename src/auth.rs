@@ -2,6 +2,7 @@ use crate::CommandResult;
 use crate::config::{Config, UserInfo};
 use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
 use crate::error;
+use crate::error::WithBacktrace;
 use crate::http_mocking::MockingMiddleware;
 use async_trait::async_trait;
 use bitpet_cli::track_errors;
@@ -11,6 +12,7 @@ use serde_json::json;
 use std::io::Write;
 use std::iter;
 
+#[track_errors]
 fn require_auth(config: &Config) -> Result<UserInfo, AuthError> {
     config
         .user
@@ -77,6 +79,7 @@ pub async fn execute_authenticated_command(
     command.execute(user, config).await
 }
 
+#[track_errors]
 pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
     println!("Logging out user with email: {}", user.email);
 
@@ -100,6 +103,7 @@ pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
     }
 }
 
+#[track_errors]
 pub async fn do_login(config: &mut Config) -> CommandResult {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::rng();

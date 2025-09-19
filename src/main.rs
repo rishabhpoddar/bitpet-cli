@@ -55,71 +55,106 @@ async fn handle_login(config: &mut Config) -> CommandResult {
 #[async_trait]
 impl AuthenticatedCommand for LogoutCommand {
     async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult {
-        do_logout(user, config).await
+        do_logout_impl(user, config).await
     }
+}
+
+#[track_errors]
+async fn do_logout_impl(user: UserInfo, config: &mut Config) -> CommandResult {
+    do_logout(user, config).await
 }
 
 #[async_trait]
 impl AuthenticatedCommand for WhoamiCommand {
     async fn execute(self, user: UserInfo, _config: &mut Config) -> CommandResult {
-        println!("Email: {}", user.email);
-        println!("Username: {}", user.username);
-        Ok(())
+        do_whoami_impl(user, _config).await
     }
+}
+
+#[track_errors]
+async fn do_whoami_impl(user: UserInfo, _config: &mut Config) -> CommandResult {
+    println!("Email: {}", user.email);
+    println!("Username: {}", user.username);
+    Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for NewPetCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement new pet logic
-        println!("New pet functionality not yet implemented");
-        Ok(())
+        do_new_pet_impl(_user, _config).await
     }
+}
+
+#[track_errors]
+async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
+    // TODO: Implement new pet logic
+    println!("New pet functionality not yet implemented");
+    Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for RemovePetCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement remove pet logic
-        println!("Remove pet functionality not yet implemented");
-        Ok(())
+        do_remove_pet_impl(_user, _config).await
     }
+}
+
+#[track_errors]
+async fn do_remove_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
+    // TODO: Implement remove pet logic
+    println!("Remove pet functionality not yet implemented");
+    Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for StatusCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement status logic
-        println!("Status functionality not yet implemented");
-        Ok(())
+        do_status_impl(_user, _config).await
     }
+}
+
+#[track_errors]
+async fn do_status_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
+    // TODO: Implement status logic
+    println!("Status functionality not yet implemented");
+    Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for FeedCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let normalised_paths = config.get_valid_normalised_paths_and_save()?;
-        if normalised_paths.is_empty() {
-            println!("No Git repositories added yet!");
-            return Ok(());
-        }
-
-        for repo in normalised_paths {
-            let _ = git::get_commits_for_today_since_last_commit(&repo, None)?;
-        }
-
-        // TODO: Implement feed logic
-        Ok(())
+        feed_impl(_user, config).await
     }
+}
+
+#[track_errors]
+async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
+    let normalised_paths = config.get_valid_normalised_paths_and_save()?;
+    if normalised_paths.is_empty() {
+        println!("No Git repositories added yet!");
+        return Ok(());
+    }
+
+    for repo in normalised_paths {
+        let _ = git::get_commits_for_today_since_last_commit(&repo, None)?;
+    }
+
+    // TODO: Implement feed logic
+    Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for PlayCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement play logic
-        println!("Play functionality not yet implemented");
-        Ok(())
+        play_impl(_user, _config).await
     }
+}
+
+#[track_errors]
+async fn play_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
+    // TODO: Implement play logic
+    println!("Play functionality not yet implemented");
+    Ok(())
 }
 
 #[async_trait]
@@ -147,51 +182,57 @@ async fn add_repo_impl(path: String, config: &mut Config) -> CommandResult {
 #[async_trait]
 impl AuthenticatedCommand for RemoveRepoCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let repo_path = match utils::NormalisedGitPath::new(self.path) {
-            Ok(normalised_path) => normalised_path.to_string(),
-            Err(utils::NormalisedPathError::PathNotGitRepository(path, _)) => path,
-            Err(e) => return Err(e.into()),
-        };
-
-        if !config.repos.contains(&repo_path) {
-            println!("Repository was never registered with BitPet, so nothing to remove!");
-            return Ok(());
-        }
-
-        remove_repo(config, repo_path)?;
-        println!("Removed repository successfully!");
-        Ok(())
+        remove_repo_impl(self.path, config).await
     }
 }
 
-fn remove_repo(config: &mut Config, repo: String) -> Result<(), Box<dyn error::CustomErrorTrait>> {
-    if config.repos.contains(&repo) {
+#[track_errors]
+async fn remove_repo_impl(path: String, config: &mut Config) -> CommandResult {
+    let repo_path = match utils::NormalisedGitPath::new(path) {
+        Ok(normalised_path) => normalised_path.to_string(),
+        Err(utils::NormalisedPathError::PathNotGitRepository(path, _)) => path,
+        Err(e) => return Err(e.into()),
+    };
+
+    if !config.repos.contains(&repo_path) {
+        println!("Repository was never registered with BitPet, so nothing to remove!");
+        return Ok(());
+    }
+
+    if config.repos.contains(&repo_path) {
         config
             .repos
-            .remove(config.repos.iter().position(|r| r == &repo).unwrap());
+            .remove(config.repos.iter().position(|r| r == &repo_path).unwrap());
         config.save()?;
     }
+    println!("Removed repository successfully!");
     Ok(())
 }
 
 #[async_trait]
 impl AuthenticatedCommand for ListReposCommand {
     async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        let normalised_paths = config.get_valid_normalised_paths_and_save()?;
-
-        if normalised_paths.is_empty() {
-            println!("No Git repositories added yet");
-            return Ok(());
-        }
-
-        for normalised_path in normalised_paths {
-            println!("- {}", normalised_path);
-        }
-
-        Ok(())
+        list_repos_impl(config).await
     }
 }
 
+#[track_errors]
+async fn list_repos_impl(config: &mut Config) -> CommandResult {
+    let normalised_paths = config.get_valid_normalised_paths_and_save()?;
+
+    if normalised_paths.is_empty() {
+        println!("No Git repositories added yet");
+        return Ok(());
+    }
+
+    for normalised_path in normalised_paths {
+        println!("- {}", normalised_path);
+    }
+
+    Ok(())
+}
+
+#[track_errors]
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
