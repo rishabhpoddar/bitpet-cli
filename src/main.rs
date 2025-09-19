@@ -11,7 +11,7 @@ mod utils;
 
 use async_trait::async_trait;
 use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_command};
-use bitpet_cli::track_errors;
+
 use commands::Commands;
 use config::{Config, UserInfo};
 
@@ -42,7 +42,7 @@ struct RemoveRepoCommand {
 struct ListReposCommand;
 
 // Command handlers
-#[track_errors]
+
 async fn handle_login(config: &mut Config) -> CommandResult {
     if let Some(_user) = &config.user {
         return Err(format!("You are already logged in with email: {}", _user.email).into());
@@ -59,7 +59,6 @@ impl AuthenticatedCommand for LogoutCommand {
     }
 }
 
-#[track_errors]
 async fn do_logout_impl(user: UserInfo, config: &mut Config) -> CommandResult {
     do_logout(user, config).await
 }
@@ -71,7 +70,6 @@ impl AuthenticatedCommand for WhoamiCommand {
     }
 }
 
-#[track_errors]
 async fn do_whoami_impl(user: UserInfo, _config: &mut Config) -> CommandResult {
     println!("Email: {}", user.email);
     println!("Username: {}", user.username);
@@ -85,7 +83,6 @@ impl AuthenticatedCommand for NewPetCommand {
     }
 }
 
-#[track_errors]
 async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
     // TODO: Implement new pet logic
     println!("New pet functionality not yet implemented");
@@ -99,7 +96,6 @@ impl AuthenticatedCommand for RemovePetCommand {
     }
 }
 
-#[track_errors]
 async fn do_remove_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
     // TODO: Implement remove pet logic
     println!("Remove pet functionality not yet implemented");
@@ -113,7 +109,6 @@ impl AuthenticatedCommand for StatusCommand {
     }
 }
 
-#[track_errors]
 async fn do_status_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
     // TODO: Implement status logic
     println!("Status functionality not yet implemented");
@@ -127,7 +122,6 @@ impl AuthenticatedCommand for FeedCommand {
     }
 }
 
-#[track_errors]
 async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
     let normalised_paths = config.get_valid_normalised_paths_and_save()?;
     if normalised_paths.is_empty() {
@@ -150,7 +144,6 @@ impl AuthenticatedCommand for PlayCommand {
     }
 }
 
-#[track_errors]
 async fn play_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
     // TODO: Implement play logic
     println!("Play functionality not yet implemented");
@@ -164,7 +157,6 @@ impl AuthenticatedCommand for AddRepoCommand {
     }
 }
 
-#[track_errors]
 async fn add_repo_impl(path: String, config: &mut Config) -> CommandResult {
     let normalised_path = utils::NormalisedGitPath::new(path)?;
 
@@ -186,7 +178,6 @@ impl AuthenticatedCommand for RemoveRepoCommand {
     }
 }
 
-#[track_errors]
 async fn remove_repo_impl(path: String, config: &mut Config) -> CommandResult {
     let repo_path = match utils::NormalisedGitPath::new(path) {
         Ok(normalised_path) => normalised_path.to_string(),
@@ -216,7 +207,6 @@ impl AuthenticatedCommand for ListReposCommand {
     }
 }
 
-#[track_errors]
 async fn list_repos_impl(config: &mut Config) -> CommandResult {
     let normalised_paths = config.get_valid_normalised_paths_and_save()?;
 
@@ -232,9 +222,9 @@ async fn list_repos_impl(config: &mut Config) -> CommandResult {
     Ok(())
 }
 
-#[track_errors]
 #[tokio::main]
 async fn main() {
+    unsafe { std::env::set_var("RUST_BACKTRACE", "1") };
     let args = Args::parse();
 
     // Load config at startup

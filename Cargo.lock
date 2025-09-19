@@ -127,14 +127,11 @@ dependencies = [
  "dirs",
  "http",
  "open",
- "proc-macro2",
- "quote",
  "rand",
  "reqwest",
  "reqwest-middleware",
  "serde",
  "serde_json",
- "syn",
  "tokio",
 ]
 

@@ -1,6 +1,5 @@
 pub trait WithBacktrace {
-    fn backtrace(&self) -> &Vec<String>;
-    fn add_context(&mut self, function_name: String);
+    fn backtrace(&self) -> &String;
 }
 
 pub trait CustomErrorTrait: std::error::Error + WithBacktrace {}
@@ -9,14 +8,14 @@ pub trait CustomErrorTrait: std::error::Error + WithBacktrace {}
 #[derive(Debug)]
 pub struct ErrorWithBacktrace<T> {
     error: T,
-    backtrace: Vec<String>,
+    backtrace: String,
 }
 
 impl<T> ErrorWithBacktrace<T> {
     pub fn new(error: T) -> Self {
         Self {
             error,
-            backtrace: Vec::new(),
+            backtrace: std::backtrace::Backtrace::capture().to_string(),
         }
     }
 }
@@ -34,12 +33,8 @@ impl<T: std::error::Error + 'static> std::error::Error for ErrorWithBacktrace<T>
 }
 
 impl<T> WithBacktrace for ErrorWithBacktrace<T> {
-    fn backtrace(&self) -> &Vec<String> {
+    fn backtrace(&self) -> &String {
         &self.backtrace
-    }
-
-    fn add_context(&mut self, function_name: String) {
-        self.backtrace.push(function_name);
     }
 }
 
