@@ -117,9 +117,9 @@ pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
 
     let backtrace = error.backtrace();
     if !backtrace.is_empty() {
-        eprintln!("{}", "Call stack:".cyan());
+        eprintln!("{}", "Call stack:".cyan().dimmed());
         for (i, func_name) in backtrace.iter().enumerate() {
-            eprintln!("  {}: {}", i + 1, func_name.cyan());
+            eprintln!("{}", format!("  {}: {}", i + 1, func_name).cyan().dimmed());
         }
     }
 }
