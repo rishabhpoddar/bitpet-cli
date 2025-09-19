@@ -1,5 +1,4 @@
 use clap::Parser;
-use colored::*;
 
 mod auth;
 mod commands;
@@ -193,7 +192,7 @@ async fn main() {
     let mut config = match Config::load() {
         Ok(config) => config,
         Err(e) => {
-            eprintln!("{}", format!("Error loading config: {}", e).red());
+            utils::print_error_chain(&e);
             std::process::exit(1);
         }
     };
@@ -222,7 +221,7 @@ async fn main() {
 
     // Handle any errors from config operations
     if let Err(e) = result {
-        eprintln!("{}", format!("Error: {}", e).red());
+        utils::print_error_chain(&*e);
         std::process::exit(1);
     }
 }

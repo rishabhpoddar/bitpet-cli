@@ -1,5 +1,7 @@
 use crate::git;
+use colored::*;
 use std::env;
+use std::error::Error;
 
 #[derive(Debug)]
 pub struct NormalisedGitPath {
@@ -71,5 +73,22 @@ impl NormalisedGitPath {
 
     pub fn path(&self) -> &std::path::Path {
         &self.path
+    }
+}
+
+/// Print an error and its full chain of causes
+pub fn print_error_chain(error: &dyn Error) {
+    eprintln!("{}", format!("Error: {}", error).red());
+
+    let mut source = error.source();
+    let mut indent = 1;
+    while let Some(err) = source {
+        eprintln!(
+            "{}{}",
+            "  ".repeat(indent),
+            format!("Caused by: {}", err).yellow()
+        );
+        source = err.source();
+        indent += 1;
     }
 }
