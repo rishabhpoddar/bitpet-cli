@@ -39,8 +39,8 @@ fn get_git_username() -> Result<String, String> {
 }
 
 pub struct Commit {
-    hash: String,
-    time_since_epoch_ms: u64,
+    _hash: String,
+    _time_since_epoch_ms: u64,
 }
 
 #[derive(Debug)]
@@ -67,13 +67,12 @@ impl From<utils::NormalisedPathError> for GitError {
 }
 
 pub fn get_commits_for_today_since_last_commit(
-    normalised_path: &utils::NormalisedGitPath,
-    last_commit: Option<Commit>,
+    _normalised_path: &utils::NormalisedGitPath,
+    _last_commit: Option<Commit>,
 ) -> Result<Vec<Commit>, GitError> {
-    // TODO: Need to get username of user first using git config --global user.name
-    // TODO: Then go to the path and run git commit, and get the ones from the username that are done today and after the last commit
-
     let username = get_git_username();
+
+    // TODO: Then go to the path and run git commit, and get the ones from the username that are done today and after the last commit
 
     match username {
         Ok(username) => {
