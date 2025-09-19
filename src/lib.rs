@@ -4,7 +4,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{ItemFn, parse_macro_input, Item, ItemMod, ImplItem, ImplItemFn};
+use syn::{ItemFn, parse_macro_input};
 
 /// Procedural macro that automatically adds function names to error backtraces
 ///
