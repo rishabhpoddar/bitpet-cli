@@ -130,7 +130,7 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
     }
 
     for repo in normalised_paths {
-        let _ = git::get_commits_for_today_since_last_commit(&repo, None)?;
+        let _commits = git::get_commits_for_path_since(&repo, "1week")?;
     }
 
     // TODO: Implement feed logic
