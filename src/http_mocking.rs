@@ -120,12 +120,11 @@ fn handle_feed(
 
     for (repo, commits) in repo_commits {
         // Get last seen commit for this repo (if any)
-        let cloned_last_fed_commits = pet.last_fed_commits.clone();
-        let last_seen = cloned_last_fed_commits.get(repo);
+        let last_seen = pet.last_fed_commits.get(repo).cloned();
 
         // Process commits in chronological order (assume input sorted oldest → newest)
         for commit in commits {
-            let is_new = match last_seen {
+            let is_new = match &last_seen {
                 Some(prev) => {
                     commit.hash != prev.hash
                         && commit.time_since_epoch_ms > prev.time_since_epoch_ms
