@@ -9,6 +9,10 @@ mod git;
 mod http_mocking;
 mod utils;
 
+use sha2::{Digest, Sha256};
+
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_command};
 
@@ -129,8 +133,14 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
         return Ok(());
     }
 
+    let mut commits: HashMap<String, Vec<git::Commit>> = HashMap::new();
+
     for repo in normalised_paths {
         let _commits = git::get_commits_for_path_since(&repo, "1week")?;
+        commits.insert(
+            format!("{:x}", Sha256::digest(repo.to_string().as_bytes())),
+            _commits,
+        );
     }
 
     // TODO: Implement feed logic
