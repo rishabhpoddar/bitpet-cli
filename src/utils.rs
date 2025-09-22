@@ -2,8 +2,27 @@ use crate::error;
 
 use crate::git;
 
+use chrono::{Datelike, Local};
 use colored::*;
 use std::env;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
+
+fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
+    assert!(git::is_git(normalised_path));
+    let mut path = normalised_path.path();
+    while let Some(parent) = path.parent() {
+        if parent.join(".git").exists() {
+            return get_git_root_path(&NormalisedGitPath {
+                path: parent.to_path_buf(),
+            });
+        }
+        path = parent;
+    }
+    NormalisedGitPath {
+        path: path.to_path_buf(),
+    }
+}
 
 #[derive(Debug)]
 pub struct NormalisedGitPath {
@@ -104,7 +123,9 @@ impl NormalisedGitPath {
             ));
         }
 
-        Ok(normalised_path)
+        let root_path = get_git_root_path(&normalised_path);
+
+        Ok(root_path)
     }
 
     pub fn path(&self) -> &std::path::Path {
@@ -121,4 +142,28 @@ pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
     if !backtrace.is_empty() {
         eprintln!("{}", backtrace.cyan().dimmed());
     }
+}
+
+pub fn get_ms_time_since_epoch() -> u64 {
+    let now = SystemTime::now();
+
+    // Calculate the duration since the UNIX_EPOCH
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+    // Convert the duration to total milliseconds
+    let timestamp_ms = duration_since_epoch.as_millis();
+
+    timestamp_ms as u64
+}
+
+pub fn current_day_local_timezone() -> u64 {
+    let today = Local::now().date_naive();
+    today.num_days_from_ce() as u64
+}
+
+pub fn is_weekend_local_timezone() -> bool {
+    matches!(
+        Local::now().weekday(),
+        chrono::Weekday::Sat | chrono::Weekday::Sun
+    )
 }
