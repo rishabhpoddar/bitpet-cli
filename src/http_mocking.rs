@@ -117,6 +117,7 @@ fn handle_feed(
     pet.last_interaction_time = utils::get_ms_time_since_epoch();
 
     let mut processed_any = false;
+    let mut too_full = "";
 
     for (repo, commits) in repo_commits {
         // Get last seen commit for this repo (if any)
@@ -138,7 +139,9 @@ fn handle_feed(
                     Ok(()) => {
                         processed_any = true;
                     }
-                    Err(msg) => return Err(msg),
+                    Err(msg) => {
+                        too_full = msg;
+                    }
                 }
 
                 // Update last seen commit for this repo
@@ -150,6 +153,8 @@ fn handle_feed(
     if processed_any {
         update_streak(pet);
         Ok(())
+    } else if too_full != "" {
+        Err(too_full)
     } else {
         Err("No new commits to feed on!")
     }
@@ -176,12 +181,15 @@ fn handle_sleep(pet: &mut Pet) -> std::result::Result<(), &'static str> {
 fn tick(pet: &mut Pet, elapsed_hours: f32, is_weekend: bool) {
     // Hunger ↑ gradually
     let mut hunger_rate = 1.6; // baseline per hour (~+38/day)
+    if is_weekend {
+        hunger_rate *= 0.4; // weekend forgiveness
+    }
     if pet.happiness >= 70 {
-        hunger_rate *= 0.6;
-    } // happy pet: slower hunger
+        hunger_rate *= 0.6; // happy pet: slower hunger
+    }
     if pet.happiness <= 30 {
-        hunger_rate *= 1.25;
-    } // sad pet: faster hunger
+        hunger_rate *= 1.25; // sad pet: faster hunger
+    }
     pet.hunger = (pet.hunger as f32 + hunger_rate * elapsed_hours).min(100.0) as u64;
 
     // Energy ↑ passively (resting recovers energy)
@@ -189,6 +197,9 @@ fn tick(pet: &mut Pet, elapsed_hours: f32, is_weekend: bool) {
 
     // Happiness drifts ↓ if ignored
     let mut happiness_change = -2.0 * elapsed_hours;
+    if is_weekend {
+        happiness_change *= 0.5; // less unhappiness on weekends
+    }
     if pet.hunger >= 80 {
         happiness_change -= 1.0 * elapsed_hours;
     }
