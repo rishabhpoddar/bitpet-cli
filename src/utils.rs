@@ -5,6 +5,7 @@ use crate::git;
 use chrono::{Datelike, Local};
 use colored::*;
 use std::env;
+use std::sync::Mutex;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -144,6 +145,12 @@ pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {
     }
 }
 
+static DELTA_MS_SINCE_NOW: Mutex<u64> = Mutex::new(0);
+
+pub fn set_delta_ms_since_now(delta_ms: u64) {
+    *DELTA_MS_SINCE_NOW.lock().unwrap() = delta_ms;
+}
+
 pub fn get_ms_time_since_epoch() -> u64 {
     let now = SystemTime::now();
 
@@ -153,17 +160,21 @@ pub fn get_ms_time_since_epoch() -> u64 {
     // Convert the duration to total milliseconds
     let timestamp_ms = duration_since_epoch.as_millis();
 
-    timestamp_ms as u64
+    timestamp_ms as u64 + *DELTA_MS_SINCE_NOW.lock().unwrap()
 }
 
 pub fn current_day_local_timezone() -> u64 {
-    let today = Local::now().date_naive();
+    let delta_ms = *DELTA_MS_SINCE_NOW.lock().unwrap();
+    let adjusted_time = Local::now() + chrono::Duration::milliseconds(delta_ms as i64);
+    let today = adjusted_time.date_naive();
     today.num_days_from_ce() as u64
 }
 
 pub fn is_weekend_local_timezone() -> bool {
+    let delta_ms = *DELTA_MS_SINCE_NOW.lock().unwrap();
+    let adjusted_time = Local::now() + chrono::Duration::milliseconds(delta_ms as i64);
     matches!(
-        Local::now().weekday(),
+        adjusted_time.weekday(),
         chrono::Weekday::Sat | chrono::Weekday::Sun
     )
 }
