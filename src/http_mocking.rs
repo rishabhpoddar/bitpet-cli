@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
-use crate::utils;
+use crate::utils::{self, is_weekend_local_timezone};
 use http::Extensions;
 use reqwest::{Body, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
@@ -22,30 +22,30 @@ const MOCK_USERNAME: &str = "mock-username";
 const MOCK_OTP: &str = "-9999";
 
 #[derive(Clone)]
-struct Commit {
-    hash: String,
-    time_since_epoch_ms: u64,
+pub struct Commit {
+    pub hash: String,
+    pub time_since_epoch_ms: u64,
 }
 
 #[derive(Clone)]
-struct Pet {
-    user_id: String,
-    id: String,
-    name: String,
-    level: u64,
-    hunger: u64,
-    energy: u64,
-    happiness: u64,
-    created_at: u64,
-    last_time_slept: u64,
-    last_fed_commits: HashMap<String, Commit>,
-    streak_count: u64,
-    last_streak_day: u64,
-    last_interaction_time: u64,
-    timezone: String,
+pub struct Pet {
+    pub user_id: String,
+    pub id: String,
+    pub name: String,
+    pub level: u64,
+    pub hunger: u64,
+    pub energy: u64,
+    pub happiness: u64,
+    pub created_at: u64,
+    pub last_time_slept: u64,
+    pub last_fed_commits: HashMap<String, Commit>,
+    pub streak_count: u64,
+    pub last_streak_day: u64,
+    pub last_interaction_time: u64,
+    pub timezone: String,
 }
 
-static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
+pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     user_id: "mock-user-id".to_string(),
     id: "mock-pet-id".to_string(),
     name: "mock-name".to_string(),
@@ -107,14 +107,13 @@ impl Middleware for MockingMiddleware {
     }
 }
 
-fn handle_feed(
+pub fn handle_feed(
     pet: &mut Pet,
     repo_commits: &HashMap<String, Vec<Commit>>, // repo → new commits
 ) -> std::result::Result<(), &'static str> {
     let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f32 / 3600000.0;
-    tick(pet, elapsed_hours, false);
-    pet.last_interaction_time = utils::get_ms_time_since_epoch();
+        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
+    tick(pet, elapsed_hours, is_weekend_local_timezone());
 
     let mut processed_any = false;
     let mut too_full = "";
@@ -160,25 +159,23 @@ fn handle_feed(
     }
 }
 
-fn handle_play(pet: &mut Pet) -> std::result::Result<(), &'static str> {
+pub fn handle_play(pet: &mut Pet) -> std::result::Result<(), &'static str> {
     let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f32 / 3600000.0;
+        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
     tick(pet, elapsed_hours, utils::is_weekend_local_timezone());
-    pet.last_interaction_time = utils::get_ms_time_since_epoch();
     play(pet)?;
     Ok(())
 }
 
-fn handle_sleep(pet: &mut Pet) -> std::result::Result<(), &'static str> {
+pub fn handle_sleep(pet: &mut Pet) -> std::result::Result<(), &'static str> {
     let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f32 / 3600000.0;
+        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
     tick(pet, elapsed_hours, utils::is_weekend_local_timezone());
-    pet.last_interaction_time = utils::get_ms_time_since_epoch();
     sleep(pet)?;
     Ok(())
 }
 
-fn tick(pet: &mut Pet, elapsed_hours: f32, is_weekend: bool) {
+fn tick(pet: &mut Pet, elapsed_hours: f64, is_weekend: bool) {
     // Hunger ↑ gradually
     let mut hunger_rate = 1.6; // baseline per hour (~+38/day)
     if is_weekend {
@@ -190,10 +187,10 @@ fn tick(pet: &mut Pet, elapsed_hours: f32, is_weekend: bool) {
     if pet.happiness <= 30 {
         hunger_rate *= 1.25; // sad pet: faster hunger
     }
-    pet.hunger = (pet.hunger as f32 + hunger_rate * elapsed_hours).min(100.0) as u64;
+    pet.hunger = (pet.hunger as f64 + hunger_rate * elapsed_hours).min(100.0) as u64;
 
     // Energy ↑ passively (resting recovers energy)
-    pet.energy = (pet.energy as f32 + 8.0 * elapsed_hours).min(100.0) as u64;
+    pet.energy = (pet.energy as f64 + 8.0 * elapsed_hours).min(100.0) as u64;
 
     // Happiness drifts ↓ if ignored
     let mut happiness_change = -2.0 * elapsed_hours;
@@ -209,12 +206,14 @@ fn tick(pet: &mut Pet, elapsed_hours: f32, is_weekend: bool) {
     if pet.hunger <= 30 && pet.energy >= 50 {
         happiness_change += 0.5 * elapsed_hours;
     }
-    pet.happiness = (pet.happiness as f32 + happiness_change).clamp(0.0, 100.0) as u64;
+    pet.happiness = (pet.happiness as f64 + happiness_change).clamp(0.0, 100.0) as u64;
 
     // Level decays if starving
     if pet.hunger == 100 {
         pet.level = pet.level.saturating_sub((5.0 * elapsed_hours) as u64);
     }
+
+    pet.last_interaction_time = utils::get_ms_time_since_epoch();
 }
 
 fn feed(pet: &mut Pet, streak_days: u64) -> std::result::Result<(), &'static str> {

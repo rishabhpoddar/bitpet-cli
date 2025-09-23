@@ -9,6 +9,10 @@ authors = ["Rishabh Poddar <rishabh@trythis.app>"]
 name = "pet"
 path = "src/main.rs"
 
+[[bin]]
+name = "simulator"
+path = "src/simulator.rs"
+
 [dependencies]
 async-trait = "0.1.89"
 chrono = "0.4.42"
@@ -24,6 +28,7 @@ serde = { version = "1.0.225", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.18.1", features = ["v4"] }
 
 # Development dependencies
 [dev-dependencies]
