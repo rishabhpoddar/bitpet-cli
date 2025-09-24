@@ -9,10 +9,6 @@ authors = ["Rishabh Poddar <rishabh@trythis.app>"]
 name = "pet"
 path = "src/main.rs"
 
-[[bin]]
-name = "simulator"
-path = "src/simulator.rs"
-
 [dependencies]
 async-trait = "0.1.89"
 chrono = "0.4.42"

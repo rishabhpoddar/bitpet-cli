@@ -7,8 +7,6 @@ mod constants;
 mod error;
 mod git;
 mod http_mocking;
-mod model;
-mod pet_sim;
 mod utils;
 
 use sha2::{Digest, Sha256};

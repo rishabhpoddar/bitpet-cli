@@ -2,12 +2,8 @@ use crate::error;
 
 use crate::git;
 
-use chrono::{Datelike, Local};
 use colored::*;
 use std::env;
-use std::sync::Mutex;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 
 fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
     assert!(git::is_git(normalised_path));
