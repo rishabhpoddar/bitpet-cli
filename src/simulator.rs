@@ -32,14 +32,12 @@ impl DevProfile for DailyCoder {
 }
 
 fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
-    let mut curr_hours = 0;
     for day in 0..days {
-        curr_hours = day * 24;
         // Dev actions
         for action in dev.actions_for_day(day) {
             match action {
                 (time_delta, Action::Feed(commits)) => {
-                    let target_time = curr_hours + time_delta;
+                    let target_time = day * 24 + time_delta;
                     let result: Result<(), &'static str> =
                         crate::http_mocking::handle_feed(pet, commits as u64, target_time);
                     if let Err(e) = result {
@@ -47,14 +45,14 @@ fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
                     }
                 }
                 (time_delta, Action::Play) => {
-                    let target_time = curr_hours + time_delta;
+                    let target_time = day * 24 + time_delta;
                     let result = crate::http_mocking::handle_play(pet, target_time);
                     if let Err(e) = result {
                         println!("Error: {}", e);
                     }
                 }
                 (time_delta, Action::Sleep) => {
-                    let target_time = curr_hours + time_delta;
+                    let target_time = day * 24 + time_delta;
                     let result = crate::http_mocking::handle_sleep(pet, target_time);
                     if let Err(e) = result {
                         println!("Error: {}", e);
