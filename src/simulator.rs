@@ -6,6 +6,8 @@ mod utils;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use uuid::Uuid;
+pub mod model;
+pub mod pet_sim;
 
 use crate::http_mocking::{Commit, PET, Pet};
 use std::collections::HashMap;
@@ -27,6 +29,8 @@ impl DevProfile for DailyCoder {
         vec![
             (10 * 3600 * 1000, Action::Feed(1)),
             (11 * 3600 * 1000, Action::Feed(1)),
+            (13 * 3600 * 1000, Action::Play),
+            // (14 * 3600 * 1000, Action::Sleep),
         ] // 2 commits
     }
 }
@@ -105,7 +109,12 @@ fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
 
         println!(
             "Day {} → Level: {}, Hunger: {}, Energy: {}, Happiness: {}, Streak: {}",
-            day, pet.level, pet.hunger, pet.energy, pet.happiness, pet.streak_count
+            day,
+            format!("{:.1}", pet.level),
+            format!("{:.1}", pet.hunger),
+            format!("{:.1}", pet.energy),
+            format!("{:.1}", pet.happiness),
+            pet.streak_count
         );
     }
 }
@@ -114,5 +123,5 @@ fn main() {
     unsafe { std::env::set_var("RUST_BACKTRACE", "1") };
     let mut dev = DailyCoder;
     let mut pet = PET.clone();
-    simulate(&mut dev, 10, &mut pet);
+    simulate(&mut dev, 30, &mut pet);
 }
