@@ -26,7 +26,7 @@ impl DevProfile for DailyCoder {
             (10, Action::Feed(1)),
             (11, Action::Feed(1)),
             (13, Action::Play),
-            // (14, Action::Sleep),
+            (14, Action::Sleep),
         ] // 2 commits
     }
 }
@@ -62,13 +62,12 @@ fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
         }
 
         println!(
-            "Day {} → Level: {}, Hunger: {}, Energy: {}, Happiness: {}, Streak: {}",
+            "Day {} → Level: {}, Hunger: {}, Energy: {}, Happiness: {}",
             day,
             format!("{:.1}", pet.level),
             format!("{:.1}", pet.hunger),
             format!("{:.1}", pet.energy),
             format!("{:.1}", pet.happiness),
-            pet.streak_count
         );
     }
 }

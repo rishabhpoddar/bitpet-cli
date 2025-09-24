@@ -31,7 +31,6 @@ pub struct Pet {
     pub energy: f64,
     pub happiness: f64,
     pub created_at: u64,
-    pub streak_count: u64,
     pub last_interaction_time: u64,
     pub timezone: String,
 }
@@ -45,7 +44,6 @@ pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     energy: 80.0,
     happiness: 60.0,
     created_at: 0,
-    streak_count: 0,
     last_interaction_time: 0,
     timezone: "Asia/Kolkata".to_string(),
 });
