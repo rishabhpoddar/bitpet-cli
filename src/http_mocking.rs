@@ -31,7 +31,7 @@ pub struct Pet {
     pub energy: f64,
     pub happiness: f64,
     pub created_at: u64,
-    pub last_interaction_time: u64,
+    pub last_interaction_time: f64,
     pub timezone: String,
 }
 
@@ -44,7 +44,7 @@ pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     energy: 80.0,
     happiness: 60.0,
     created_at: 0,
-    last_interaction_time: 0,
+    last_interaction_time: 0.0,
     timezone: "Asia/Kolkata".to_string(),
 });
 
@@ -96,11 +96,11 @@ impl Middleware for MockingMiddleware {
 pub fn handle_feed(
     pet: &mut Pet,
     number_of_commits: u64,
-    current_hours: u64,
+    current_hours: f64,
 ) -> std::result::Result<(), &'static str> {
     // First, advance time since last interaction via Tick
     let elapsed_hours = current_hours - pet.last_interaction_time;
-    if elapsed_hours > 0 {
+    if elapsed_hours > 0.0 {
         apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
         pet.last_interaction_time = current_hours;
     }
@@ -112,10 +112,10 @@ pub fn handle_feed(
     Ok(())
 }
 
-pub fn handle_play(pet: &mut Pet, current_hours: u64) -> std::result::Result<(), &'static str> {
+pub fn handle_play(pet: &mut Pet, current_hours: f64) -> std::result::Result<(), &'static str> {
     // Advance time via Tick
     let elapsed_hours = (current_hours - pet.last_interaction_time);
-    if elapsed_hours > 0 {
+    if elapsed_hours > 0.0 {
         apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
         pet.last_interaction_time = current_hours;
     }
@@ -124,10 +124,10 @@ pub fn handle_play(pet: &mut Pet, current_hours: u64) -> std::result::Result<(),
     Ok(())
 }
 
-pub fn handle_sleep(pet: &mut Pet, current_hours: u64) -> std::result::Result<(), &'static str> {
+pub fn handle_sleep(pet: &mut Pet, current_hours: f64) -> std::result::Result<(), &'static str> {
     // Advance time via Tick
     let elapsed_hours = (current_hours - pet.last_interaction_time);
-    if elapsed_hours > 0 {
+    if elapsed_hours > 0.0 {
         apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
     }
     // Apply Sleep with zero additional time

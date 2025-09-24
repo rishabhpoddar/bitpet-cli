@@ -15,18 +15,30 @@ enum Action {
 }
 
 trait DevProfile {
-    fn actions_for_day(&mut self, day: u64) -> Vec<(u64, Action)>;
+    fn actions_for_day(&mut self, day: u64) -> Vec<(f64, Action)>;
 }
 
 struct DailyCoder;
 
 impl DevProfile for DailyCoder {
-    fn actions_for_day(&mut self, _day: u64) -> Vec<(u64, Action)> {
+    fn actions_for_day(&mut self, _day: u64) -> Vec<(f64, Action)> {
         vec![
-            (10, Action::Feed(1)),
-            (11, Action::Feed(1)),
-            (13, Action::Play),
-            (14, Action::Sleep),
+            (10.0, Action::Feed(1)),
+            (11.0, Action::Feed(1)),
+            (12.0, Action::Feed(1)),
+            (13.0, Action::Feed(1)),
+            (14.0, Action::Feed(1)),
+            (15.0, Action::Feed(1)),
+            (16.0, Action::Feed(1)),
+            (17.0, Action::Feed(1)),
+            (18.0, Action::Feed(1)),
+            (19.0, Action::Feed(1)),
+            (19.5, Action::Feed(1)),
+            (20.0, Action::Feed(1)),
+            (20.5, Action::Feed(1)),
+            (21.0, Action::Feed(1)),
+            // (13, Action::Play),
+            // (14, Action::Sleep),
         ] // 2 commits
     }
 }
@@ -37,7 +49,7 @@ fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
         for action in dev.actions_for_day(day) {
             match action {
                 (time_delta, Action::Feed(commits)) => {
-                    let target_time = day * 24 + time_delta;
+                    let target_time = day as f64 * 24.0 + time_delta;
                     let result: Result<(), &'static str> =
                         crate::http_mocking::handle_feed(pet, commits as u64, target_time);
                     if let Err(e) = result {
@@ -45,14 +57,14 @@ fn simulate(dev: &mut dyn DevProfile, days: u64, pet: &mut Pet) {
                     }
                 }
                 (time_delta, Action::Play) => {
-                    let target_time = day * 24 + time_delta;
+                    let target_time = day as f64 * 24.0 + time_delta;
                     let result = crate::http_mocking::handle_play(pet, target_time);
                     if let Err(e) = result {
                         println!("Error: {}", e);
                     }
                 }
                 (time_delta, Action::Sleep) => {
-                    let target_time = day * 24 + time_delta;
+                    let target_time = day as f64 * 24.0 + time_delta;
                     let result = crate::http_mocking::handle_sleep(pet, target_time);
                     if let Err(e) = result {
                         println!("Error: {}", e);
