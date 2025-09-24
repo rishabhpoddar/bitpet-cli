@@ -45,9 +45,9 @@ pub fn apply_model_transition(pet: &mut Pet, action: Action, elapsed_hours: f64)
     let y = PET_MODEL.predict(&x);
 
     // other stats: clamp and (optionally) round
-    let next_hunger = clamp01(y[0]).max(0.0).min(100.0);
-    let next_energy = clamp01(y[1]).max(0.0).min(100.0);
-    let next_happiness = clamp01(y[2]).max(0.0).min(100.0);
+    let next_hunger = clamp01(y[0]);
+    let next_energy = clamp01(y[1]);
+    let next_happiness = clamp01(y[2]);
 
     // IMPORTANT: don't round level per-step; keep fractional progress
     // y[3] is absolute next_level (as trained). Prevent drops if you want:
