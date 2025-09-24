@@ -61,6 +61,4 @@ pub fn apply_model_transition(pet: &mut Pet, action: Action, elapsed_hours: f64)
     // accumulate level as float in a hidden local, then commit an integer view:
     // simplest: use ceil so any positive progress shows up
     pet.level = next_level_f;
-
-    pet.last_interaction_time = crate::utils::get_ms_time_since_epoch();
 }

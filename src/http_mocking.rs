@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
 use crate::pet_sim::{Action, apply_model_transition};
-use crate::utils::{self, is_weekend_local_timezone};
+use crate::utils::{self};
 use http::Extensions;
 use reqwest::{Body, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
@@ -23,12 +22,6 @@ const MOCK_USERNAME: &str = "mock-username";
 const MOCK_OTP: &str = "-9999";
 
 #[derive(Clone)]
-pub struct Commit {
-    pub hash: String,
-    pub time_since_epoch_ms: u64,
-}
-
-#[derive(Clone)]
 pub struct Pet {
     pub user_id: String,
     pub id: String,
@@ -38,9 +31,7 @@ pub struct Pet {
     pub energy: f64,
     pub happiness: f64,
     pub created_at: u64,
-    pub last_fed_commits: HashMap<String, Commit>,
     pub streak_count: u64,
-    pub last_streak_day: u64,
     pub last_interaction_time: u64,
     pub timezone: String,
 }
@@ -53,11 +44,9 @@ pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     hunger: 40.0,
     energy: 80.0,
     happiness: 60.0,
-    created_at: utils::get_ms_time_since_epoch(),
-    last_fed_commits: HashMap::new(),
+    created_at: 0,
     streak_count: 0,
-    last_streak_day: utils::get_ms_time_since_epoch(),
-    last_interaction_time: utils::get_ms_time_since_epoch(),
+    last_interaction_time: 0,
     timezone: "Asia/Kolkata".to_string(),
 });
 
@@ -108,89 +97,42 @@ impl Middleware for MockingMiddleware {
 
 pub fn handle_feed(
     pet: &mut Pet,
-    repo_commits: &HashMap<String, Vec<Commit>>,
+    number_of_commits: u64,
+    current_hours: u64,
 ) -> std::result::Result<(), &'static str> {
     // First, advance time since last interaction via Tick
-    let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
-    if elapsed_hours > 0.0 {
-        apply_model_transition(pet, Action::Tick, elapsed_hours);
+    let elapsed_hours = current_hours - pet.last_interaction_time;
+    if elapsed_hours > 0 {
+        apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
+        pet.last_interaction_time = current_hours;
     }
 
-    let mut processed_any = false;
-    let mut too_full = "";
-
-    for (repo, commits) in repo_commits {
-        let last_seen = pet.last_fed_commits.get(repo).cloned();
-
-        for commit in commits {
-            let is_new = match &last_seen {
-                Some(prev) => {
-                    commit.hash != prev.hash
-                        && commit.time_since_epoch_ms > prev.time_since_epoch_ms
-                }
-                None => true,
-            };
-
-            if is_new {
-                // Apply the learned Feed transition; no extra time has passed since Tick
-                apply_model_transition(pet, Action::Feed, 0.0);
-                processed_any = true;
-
-                pet.last_fed_commits.insert(repo.clone(), commit.clone());
-            }
-        }
+    for _ in 0..number_of_commits {
+        apply_model_transition(pet, Action::Feed, 0.0);
     }
 
-    if processed_any {
-        update_streak(pet);
-        Ok(())
-    } else if too_full != "" {
-        Err(too_full)
-    } else {
-        Err("No new commits to feed on!")
-    }
+    Ok(())
 }
 
-pub fn handle_play(pet: &mut Pet) -> std::result::Result<(), &'static str> {
+pub fn handle_play(pet: &mut Pet, current_hours: u64) -> std::result::Result<(), &'static str> {
     // Advance time via Tick
-    let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
-    if elapsed_hours > 0.0 {
-        apply_model_transition(pet, Action::Tick, elapsed_hours);
+    let elapsed_hours = (current_hours - pet.last_interaction_time);
+    if elapsed_hours > 0 {
+        apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
+        pet.last_interaction_time = current_hours;
     }
     // Apply Play with zero additional time
     apply_model_transition(pet, Action::Play, 0.0);
     Ok(())
 }
 
-pub fn handle_sleep(pet: &mut Pet) -> std::result::Result<(), &'static str> {
+pub fn handle_sleep(pet: &mut Pet, current_hours: u64) -> std::result::Result<(), &'static str> {
     // Advance time via Tick
-    let elapsed_hours =
-        (utils::get_ms_time_since_epoch() - pet.last_interaction_time) as f64 / 3600000.0;
-    if elapsed_hours > 0.0 {
-        apply_model_transition(pet, Action::Tick, elapsed_hours);
+    let elapsed_hours = (current_hours - pet.last_interaction_time);
+    if elapsed_hours > 0 {
+        apply_model_transition(pet, Action::Tick, elapsed_hours as f64);
     }
     // Apply Sleep with zero additional time
     apply_model_transition(pet, Action::Sleep, 0.0);
     Ok(())
-}
-
-fn update_streak(pet: &mut Pet) {
-    let today = utils::current_day_local_timezone();
-
-    if today == pet.last_streak_day {
-        // Already fed today → no change
-        return;
-    }
-
-    if today == pet.last_streak_day + 1 {
-        // Consecutive day → streak++
-        pet.streak_count += 1;
-    } else {
-        // Missed at least one day → reset streak
-        pet.streak_count = 1;
-    }
-
-    pet.last_streak_day = today;
 }
