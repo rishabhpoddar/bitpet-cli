@@ -5,8 +5,8 @@ use crate::git;
 use colored::*;
 use std::env;
 
-fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
-    assert!(git::is_git(normalised_path));
+fn get_git_root_path(normalised_path: NormalisedGitPath) -> NormalisedGitPath {
+    assert!(git::is_git(&normalised_path));
     let mut path = normalised_path.path();
     if path.join(".git").exists() {
         return NormalisedGitPath {
@@ -15,7 +15,7 @@ fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
     }
     while let Some(parent) = path.parent() {
         if parent.join(".git").exists() {
-            return get_git_root_path(&NormalisedGitPath {
+            return get_git_root_path(NormalisedGitPath {
                 path: parent.to_path_buf(),
             });
         }
@@ -127,7 +127,7 @@ impl NormalisedGitPath {
             ));
         }
 
-        let root_path = get_git_root_path(&normalised_path);
+        let root_path = get_git_root_path(normalised_path);
 
         Ok(root_path)
     }
