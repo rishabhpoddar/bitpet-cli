@@ -15,7 +15,7 @@ pub struct Pet {
     pub name: String,
     pub level: f64,
     pub hunger: f64,
-    pub energy: f64,
+    pub coding_energy: f64,
     pub boredom: f64,
     pub created_at: u64,
 }
