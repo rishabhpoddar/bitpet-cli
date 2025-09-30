@@ -7,6 +7,7 @@ mod constants;
 mod error;
 mod git;
 mod http_mocking;
+mod pet;
 mod utils;
 
 use sha2::{Digest, Sha256};
@@ -18,6 +19,7 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
+use pet::{CommandIfPetExists, Pet, execute_command_if_pet_exists};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -94,39 +96,31 @@ async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult
 }
 
 #[async_trait]
-impl AuthenticatedCommand for RemovePetCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        do_remove_pet_impl(_user, _config).await
+impl CommandIfPetExists for RemovePetCommand {
+    async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+        // TODO: Implement remove pet logic
+        println!("Remove pet functionality not yet implemented");
+        Ok(())
     }
-}
-
-async fn do_remove_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
-    // TODO: Implement remove pet logic
-    println!("Remove pet functionality not yet implemented");
-    Ok(())
 }
 
 #[async_trait]
-impl AuthenticatedCommand for StatusCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        do_status_impl(_user, _config).await
+impl CommandIfPetExists for StatusCommand {
+    async fn execute(self, pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+        println!("Pet: {:?}", pet);
+        // TODO: ...
+        Ok(())
     }
-}
-
-async fn do_status_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
-    // TODO: Implement status logic
-    println!("Status functionality not yet implemented");
-    Ok(())
 }
 
 #[async_trait]
-impl AuthenticatedCommand for FeedCommand {
-    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
-        feed_impl(_user, config).await
+impl CommandIfPetExists for FeedCommand {
+    async fn execute(self, pet: Pet, user: UserInfo, config: &mut Config) -> CommandResult {
+        feed_impl(pet, user, config).await
     }
 }
 
-async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
+async fn feed_impl(_pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
     let normalised_paths = config.get_valid_normalised_paths_and_save()?;
     if normalised_paths.is_empty() {
         println!("No Git repositories added yet!");
@@ -148,21 +142,17 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
 }
 
 #[async_trait]
-impl AuthenticatedCommand for PlayCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        play_impl(_user, _config).await
+impl CommandIfPetExists for PlayCommand {
+    async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+        // TODO: Implement play logic
+        println!("Play functionality not yet implemented");
+        Ok(())
     }
 }
 
-async fn play_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
-    // TODO: Implement play logic
-    println!("Play functionality not yet implemented");
-    Ok(())
-}
-
 #[async_trait]
-impl AuthenticatedCommand for AddRepoCommand {
-    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+impl CommandIfPetExists for AddRepoCommand {
+    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
         add_repo_impl(self.path, config).await
     }
 }
@@ -182,8 +172,8 @@ async fn add_repo_impl(path: String, config: &mut Config) -> CommandResult {
 }
 
 #[async_trait]
-impl AuthenticatedCommand for RemoveRepoCommand {
-    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+impl CommandIfPetExists for RemoveRepoCommand {
+    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
         remove_repo_impl(self.path, config).await
     }
 }
@@ -211,8 +201,8 @@ async fn remove_repo_impl(path: String, config: &mut Config) -> CommandResult {
 }
 
 #[async_trait]
-impl AuthenticatedCommand for ListReposCommand {
-    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+impl CommandIfPetExists for ListReposCommand {
+    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
         list_repos_impl(config).await
     }
 }
@@ -252,19 +242,19 @@ async fn main() {
         Commands::Whoami {} => execute_authenticated_command(&mut config, WhoamiCommand).await,
         Commands::NewPet {} => execute_authenticated_command(&mut config, NewPetCommand).await,
         Commands::RemovePet {} => {
-            execute_authenticated_command(&mut config, RemovePetCommand).await
+            execute_command_if_pet_exists(&mut config, RemovePetCommand).await
         }
-        Commands::Status {} => execute_authenticated_command(&mut config, StatusCommand).await,
-        Commands::Feed {} => execute_authenticated_command(&mut config, FeedCommand).await,
-        Commands::Play {} => execute_authenticated_command(&mut config, PlayCommand).await,
+        Commands::Status {} => execute_command_if_pet_exists(&mut config, StatusCommand).await,
+        Commands::Feed {} => execute_command_if_pet_exists(&mut config, FeedCommand).await,
+        Commands::Play {} => execute_command_if_pet_exists(&mut config, PlayCommand).await,
         Commands::AddRepo { path } => {
-            execute_authenticated_command(&mut config, AddRepoCommand { path }).await
+            execute_command_if_pet_exists(&mut config, AddRepoCommand { path }).await
         }
         Commands::RemoveRepo { path } => {
-            execute_authenticated_command(&mut config, RemoveRepoCommand { path }).await
+            execute_command_if_pet_exists(&mut config, RemoveRepoCommand { path }).await
         }
         Commands::ListRepos {} => {
-            execute_authenticated_command(&mut config, ListReposCommand).await
+            execute_command_if_pet_exists(&mut config, ListReposCommand).await
         }
     };
 

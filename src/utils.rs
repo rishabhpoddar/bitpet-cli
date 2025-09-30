@@ -8,6 +8,11 @@ use std::env;
 fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
     assert!(git::is_git(normalised_path));
     let mut path = normalised_path.path();
+    if path.join(".git").exists() {
+        return NormalisedGitPath {
+            path: path.to_path_buf(),
+        };
+    }
     while let Some(parent) = path.parent() {
         if parent.join(".git").exists() {
             return get_git_root_path(&NormalisedGitPath {
@@ -16,9 +21,11 @@ fn get_git_root_path(normalised_path: &NormalisedGitPath) -> NormalisedGitPath {
         }
         path = parent;
     }
-    NormalisedGitPath {
+    let result = NormalisedGitPath {
         path: path.to_path_buf(),
-    }
+    };
+    assert!(git::is_git(&result));
+    result
 }
 
 #[derive(Debug)]
