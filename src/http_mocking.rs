@@ -59,8 +59,8 @@ impl Middleware for MockingMiddleware {
         } else if path == LOGOUT_PATH {
             let token = req.headers().get("Authorization");
             if !token.is_none() {
-                let token = token.unwrap().to_str().unwrap();
-                if token == "Bearer ".to_owned() + MOCK_TOKEN {
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
                     return Ok(http::Response::builder()
                         .status(200)
                         .body(Body::from("Logged out successfully!"))
@@ -71,8 +71,8 @@ impl Middleware for MockingMiddleware {
         } else if path == STATUS_PATH {
             let token = req.headers().get("Authorization");
             if !token.is_none() {
-                let token = token.unwrap().to_str().unwrap();
-                if token == "Bearer ".to_owned() + MOCK_TOKEN {
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
                     return Ok(http::Response::builder()
                         .status(200)
                         .body(Body::from(serde_json::to_string(&PET.clone()).unwrap()))
