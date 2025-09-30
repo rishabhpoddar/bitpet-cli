@@ -34,15 +34,15 @@ pub async fn execute_command_if_pet_exists(
     }
     #[async_trait]
     impl<C: CommandIfPetExists + Send> AuthenticatedCommand for AuthCommandIfPetExists<C> {
-        async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-            let pet = get_pet_status(_user.token.as_str(), _config).await?;
+        async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult {
+            let pet = get_pet_status(user.token.as_str(), config).await?;
             if pet.is_none() {
                 return Err(format!(
                     "You do not yet have a pet! Please use the 'pet new-pet' command to create one."
                 )
                 .into());
             } else {
-                self.command.execute(pet.unwrap(), _user, _config).await
+                self.command.execute(pet.unwrap(), user, config).await
             }
         }
     }
