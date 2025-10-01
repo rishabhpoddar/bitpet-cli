@@ -19,6 +19,7 @@ pub struct Pet {
     pub coding_energy: f64,
     pub boredom: f64,
     pub created_at: u64,
+    pub streak: u64,
 }
 
 impl std::fmt::Display for Pet {

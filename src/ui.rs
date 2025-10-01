@@ -15,13 +15,14 @@ pub fn get_pet_display(pet: &pet::Pet) -> String {
     let boredom_color = get_boredom_color(pet.boredom);
 
     format!(
-        "Here is how {} is feeling:\n- Level: {}\n- Hunger: {}\n- Coding Energy: {}\n- Boredom: {}\n- Age: {} days",
+        "Here is how {} is feeling:\n- Level: {}\n- Hunger: {}\n- Coding Energy: {}\n- Boredom: {}\n- Coding streak days: {}\n- Age: {} days",
         pet.name,
-        pet.level.to_string().white(),
+        pet.level.to_string(),
         hunger_color,
         coding_energy_color,
         boredom_color,
-        age_days.to_string().white()
+        pet.streak.to_string(),
+        age_days.to_string()
     )
 }
 

@@ -28,6 +28,7 @@ pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     coding_energy: 80.0,
     boredom: 60.0,
     created_at: 0,
+    streak: 0,
 });
 
 #[async_trait::async_trait]
