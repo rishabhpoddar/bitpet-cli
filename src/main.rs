@@ -10,6 +10,7 @@ mod http_mocking;
 mod pet;
 mod ui;
 mod utils;
+use crossterm::QueueableCommand;
 use crossterm::{ExecutableCommand, cursor, style::Print};
 use std::io::{Write, stdout};
 use std::time::Duration;
@@ -132,8 +133,8 @@ async fn do_status_animation() -> Result<(), std::io::Error> {
         let frame = frames[i % frames.len()];
 
         // Jump back to saved cursor pos and overwrite only the animation area
-        stdout.execute(cursor::RestorePosition)?;
-        stdout.execute(Print(frame))?;
+        stdout.queue(cursor::RestorePosition)?;
+        stdout.queue(Print(frame))?;
         stdout.flush()?;
 
         sleep(Duration::from_millis(300)).await;
@@ -141,7 +142,6 @@ async fn do_status_animation() -> Result<(), std::io::Error> {
 
     // Move cursor down after animation so the prompt continues below
     stdout.execute(cursor::MoveToNextLine(2))?;
-    stdout.flush()?;
     Ok(())
 }
 
