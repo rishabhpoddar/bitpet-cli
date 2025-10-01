@@ -8,7 +8,12 @@ mod error;
 mod git;
 mod http_mocking;
 mod pet;
+mod ui;
 mod utils;
+use crossterm::{ExecutableCommand, cursor, style::Print};
+use std::io::{Write, stdout};
+use std::time::Duration;
+use tokio::time::sleep;
 
 use sha2::{Digest, Sha256};
 
@@ -107,10 +112,37 @@ impl CommandIfPetExists for RemovePetCommand {
 #[async_trait]
 impl CommandIfPetExists for StatusCommand {
     async fn execute(self, pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        println!("Pet: {:?}", pet);
-        // TODO: ...
+        println!("{}", pet);
+        // Instead of just dumping Debug
+        do_status_animation().await?;
         Ok(())
     }
+}
+
+async fn do_status_animation() -> Result<(), std::io::Error> {
+    let mut stdout = stdout();
+
+    // Example "pet" frames
+    let frames = vec![r"  (\_._/) ", r"  ( o.o ) ", r"  (> ^ <) "];
+
+    // Save the cursor position before we start
+    stdout.execute(cursor::SavePosition)?;
+
+    for i in 0..10 {
+        let frame = frames[i % frames.len()];
+
+        // Jump back to saved cursor pos and overwrite only the animation area
+        stdout.execute(cursor::RestorePosition)?;
+        stdout.execute(Print(frame))?;
+        stdout.flush()?;
+
+        sleep(Duration::from_millis(300)).await;
+    }
+
+    // Move cursor down after animation so the prompt continues below
+    stdout.execute(cursor::MoveToNextLine(2))?;
+    stdout.flush()?;
+    Ok(())
 }
 
 #[async_trait]

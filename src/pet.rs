@@ -5,6 +5,7 @@ use crate::config::{Config, UserInfo};
 use crate::constants::STATUS_PATH;
 use crate::error::CustomErrorTrait;
 use crate::http_mocking::MockingMiddleware;
+use crate::ui::get_pet_display;
 use async_trait::async_trait;
 
 use crate::auth::{AuthenticatedCommand, execute_authenticated_command};
@@ -18,6 +19,12 @@ pub struct Pet {
     pub coding_energy: f64,
     pub boredom: f64,
     pub created_at: u64,
+}
+
+impl std::fmt::Display for Pet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", get_pet_display(self))
+    }
 }
 
 #[async_trait]

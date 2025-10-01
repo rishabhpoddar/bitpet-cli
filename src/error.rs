@@ -74,3 +74,4 @@ impl From<String> for Box<dyn CustomErrorTrait> {
 impl_custom_error_from!(reqwest_middleware::Error);
 impl_custom_error_from!(reqwest::Error);
 impl_custom_error_from!(serde_json::Error);
+impl_custom_error_from!(std::io::Error);
