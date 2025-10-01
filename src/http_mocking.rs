@@ -25,8 +25,7 @@ pub static PET: LazyLock<Pet> = LazyLock::new(|| Pet {
     name: "mock-name".to_string(),
     level: 0.0,
     hunger: 40.0,
-    coding_energy: 80.0,
-    boredom: 60.0,
+    happiness: 40.0,
     created_at: 0,
     streak: 0,
 });

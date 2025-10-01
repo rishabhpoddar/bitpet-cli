@@ -11,16 +11,14 @@ pub fn get_pet_display(pet: &pet::Pet) -> String {
 
     // Color functions for different stats
     let hunger_color = get_hunger_color(pet.hunger);
-    let coding_energy_color = get_coding_energy_color(pet.coding_energy);
-    let boredom_color = get_boredom_color(pet.boredom);
+    let happiness_color = get_happiness_color(pet.happiness);
 
     format!(
-        "Here is how {} is feeling:\n- Level: {}\n- Hunger: {}\n- Coding Energy: {}\n- Boredom: {}\n- Coding streak days: {}\n- Age: {} days",
+        "Here is how {} is feeling:\n- Level: {}\n- Hunger: {}\n- Happiness: {}\n- Coding streak days: {}\n- Age: {} days",
         pet.name,
         pet.level.to_string(),
         hunger_color,
-        coding_energy_color,
-        boredom_color,
+        happiness_color,
         pet.streak.to_string(),
         age_days.to_string()
     )
@@ -34,18 +32,10 @@ fn get_hunger_color(hunger: f64) -> String {
     }
 }
 
-fn get_coding_energy_color(energy: f64) -> String {
-    match energy {
-        0.0..=30.0 => format!("{}", energy.to_string().red()),
-        31.0..=75.0 => format!("{}", energy.to_string().yellow()),
-        _ => format!("{}", energy.to_string().green()),
-    }
-}
-
-fn get_boredom_color(boredom: f64) -> String {
-    match boredom {
-        0.0..=30.0 => format!("{}", boredom.to_string().green()),
-        31.0..=75.0 => format!("{}", boredom.to_string().yellow()),
-        _ => format!("{}", boredom.to_string().red()),
+fn get_happiness_color(happiness: f64) -> String {
+    match happiness {
+        0.0..=30.0 => format!("{}", happiness.to_string().red()),
+        31.0..=75.0 => format!("{}", happiness.to_string().yellow()),
+        _ => format!("{}", happiness.to_string().green()),
     }
 }
