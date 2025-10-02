@@ -6,16 +6,25 @@ use std::{
     time::Duration,
 };
 
+use crate::error::CustomErrorTrait;
+
 use crate::CommandResult;
 const BOX_WIDTH: u16 = 45;
 const BOX_HEIGHT: u16 = 10;
+
+pub struct ImageDrawnArea {
+    start_x: u16,
+    start_y: u16,
+    width: u16,
+    height: u16,
+}
 
 pub fn draw_image_starting_at(
     stdout: &mut std::io::Stdout,
     image: &str,
     start_x: u16,
     start_y: u16,
-) -> CommandResult {
+) -> Result<ImageDrawnArea, Box<dyn CustomErrorTrait>> {
     stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
     let (orig_x, orig_y) = crossterm::cursor::position()?;
 
@@ -24,7 +33,12 @@ pub fn draw_image_starting_at(
         stdout.queue(crossterm::style::Print(line))?;
     }
 
-    Ok(())
+    Ok(ImageDrawnArea {
+        start_x,
+        start_y,
+        width: image.lines().map(|line| line.len()).max().unwrap() as u16,
+        height: image.lines().count() as u16,
+    })
 }
 
 pub fn pad_image(image: &str) -> (String, usize, usize) {
@@ -58,13 +72,20 @@ pub fn print_in_box<F>(
     fps: Option<u32>,
 ) -> CommandResult
 where
-    F: FnMut(&mut std::io::Stdout, u16, u16, u16, usize) -> CommandResult,
+    F: FnMut(
+        &mut std::io::Stdout,
+        u16,
+        u16,
+        u16,
+        usize,
+    ) -> Result<ImageDrawnArea, Box<dyn CustomErrorTrait>>,
 {
     let mut stdout = stdout();
     stdout.execute(crossterm::cursor::SavePosition)?;
     let (mut w, mut h) = crossterm::terminal::size().unwrap();
     let mut frame: usize = 0;
     let mut is_showing_error = false;
+    let mut older_image_drawn_area: Option<ImageDrawnArea> = None;
     while frame < max_number_of_frames {
         while crossterm::event::poll(Duration::from_secs(0))? {
             match crossterm::event::read()? {
@@ -85,7 +106,6 @@ where
                 ))?;
             }
         } else {
-            // TODO: In here, we are first drawing an empty box, and then drawing the pet in it which causes a flicker.. ideally, we want to form the whole box first, and then just draw once.
             is_showing_error = false;
             let horizontal_border = "─".repeat(BOX_WIDTH as usize - 2);
             stdout.queue(crossterm::style::Print(format!(
@@ -107,13 +127,34 @@ where
                 curr_position_of_cursor.1 - BOX_HEIGHT,
             ))?;
             stdout.queue(crossterm::cursor::SavePosition)?;
-            render_in_box(
+            let image_drawn_area = render_in_box(
                 &mut stdout,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
                 BOX_WIDTH as u16,
                 BOX_HEIGHT as u16,
                 frame,
             )?;
+            if let Some(older_area) = older_image_drawn_area {
+                let mut areas_to_clear: Vec<(u16, u16)> = Vec::new();
+
+                for y in older_area.start_y..older_area.start_y + older_area.height {
+                    for x in older_area.start_x..older_area.start_x + older_area.width {
+                        if x < image_drawn_area.start_x
+                            || x >= image_drawn_area.start_x + image_drawn_area.width
+                            || y < image_drawn_area.start_y
+                            || y >= image_drawn_area.start_y + image_drawn_area.height
+                        {
+                            areas_to_clear.push((x, y));
+                        }
+                    }
+                }
+
+                for to_clear in areas_to_clear {
+                    stdout.queue(crossterm::cursor::MoveTo(to_clear.0, to_clear.1))?;
+                    stdout.queue(crossterm::style::Print(" "))?;
+                }
+            }
+            older_image_drawn_area = Some(image_drawn_area);
             stdout.flush()?;
         }
 

@@ -112,7 +112,7 @@ impl CommandIfPetExists for StatusCommand {
 
 async fn do_status_animation(pet: &Pet) -> CommandResult {
     print_in_box(
-        |stdout, curr_cursor_y, box_width, box_height, _curr_frame| -> CommandResult {
+        |stdout, curr_cursor_y, box_width, box_height, _curr_frame| {
             // TODO: Need to add colours
             // TODO: Need to add animation
             let eyes = match pet.happiness {
@@ -141,9 +141,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
             let start_x = box_width / 2 - max_width as u16 / 2;
             let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
 
-            draw_image_starting_at(stdout, &padded_face, start_x, start_y)?;
-
-            Ok(())
+            draw_image_starting_at(stdout, &padded_face, start_x + _curr_frame as u16, start_y)
         },
         10,
         Some(10),
