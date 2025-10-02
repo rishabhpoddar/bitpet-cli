@@ -27,8 +27,9 @@ pub fn draw_image_starting_at(
     Ok(())
 }
 
-pub fn pad_image(image: &str) -> String {
+pub fn pad_image(image: &str) -> (String, usize, usize) {
     let max_width = image.lines().map(|line| line.len()).max().unwrap();
+    let max_height = image.lines().count();
     let padded_face: Vec<String> = image
         .lines()
         .map(|line| {
@@ -48,7 +49,7 @@ pub fn pad_image(image: &str) -> String {
         })
         .collect();
 
-    padded_face.join("\n")
+    (padded_face.join("\n"), max_width, max_height)
 }
 
 pub fn print_in_box<F>(
