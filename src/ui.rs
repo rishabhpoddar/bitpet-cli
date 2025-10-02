@@ -93,10 +93,9 @@ where
                 horizontal_border
             )))?;
             for _ in 0..BOX_HEIGHT - 2 {
-                stdout.queue(crossterm::style::Print(format!(
-                    "│{}│\n",
-                    " ".repeat(BOX_WIDTH as usize - 2)
-                )))?;
+                stdout.queue(crossterm::style::Print("│"))?;
+                stdout.queue(crossterm::cursor::MoveRight(BOX_WIDTH as u16 - 2))?;
+                stdout.queue(crossterm::style::Print("│\n"))?;
             }
             stdout.queue(crossterm::style::Print(format!(
                 "└{}┘\n",
