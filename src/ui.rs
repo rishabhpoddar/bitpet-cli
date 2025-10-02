@@ -4,7 +4,7 @@ use crossterm::ExecutableCommand;
 use std::{io::Write, time::Duration};
 
 const BOX_WIDTH: u16 = 45;
-const BOX_HEIGHT: u16 = 15;
+const BOX_HEIGHT: u16 = 10;
 
 pub fn print_in_box(
     stdout: &mut std::io::Stdout,
