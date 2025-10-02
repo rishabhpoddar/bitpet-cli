@@ -10,6 +10,7 @@ mod http_mocking;
 mod pet;
 mod ui;
 mod utils;
+use crossterm::ExecutableCommand;
 use ui::{draw_image_starting_at, pad_image, print_in_box};
 
 use sha2::{Digest, Sha256};
@@ -141,7 +142,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
             let start_x = box_width / 2 - max_width as u16 / 2;
             let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
 
-            draw_image_starting_at(stdout, &padded_face, start_x + _curr_frame as u16, start_y)
+            draw_image_starting_at(stdout, &padded_face, start_x, start_y)
         },
         10,
         Some(10),
@@ -295,4 +296,8 @@ async fn main() {
         utils::print_error_chain(e);
         std::process::exit(1);
     }
+
+    // we have this cause our UI hides the cursor.. and if it fails anywhere in the middle, we
+    let mut stdout = std::io::stdout();
+    stdout.execute(crossterm::cursor::Show).unwrap();
 }

@@ -81,6 +81,7 @@ where
     ) -> Result<ImageDrawnArea, Box<dyn CustomErrorTrait>>,
 {
     let mut stdout = stdout();
+    stdout.execute(crossterm::cursor::Hide)?;
     stdout.execute(crossterm::cursor::SavePosition)?;
     let (mut w, mut h) = crossterm::terminal::size().unwrap();
     let mut frame: usize = 0;
