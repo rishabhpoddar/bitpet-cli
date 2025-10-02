@@ -12,6 +12,7 @@ mod ui;
 mod utils;
 use crossterm::ExecutableCommand;
 use ui::{draw_image_starting_at, pad_image, print_in_box};
+extern crate ctrlc;
 
 use sha2::{Digest, Sha256};
 
@@ -257,6 +258,14 @@ async fn list_repos_impl(config: &mut Config) -> CommandResult {
 
 #[tokio::main]
 async fn main() {
+    tokio::task::spawn(async {
+        ctrlc::set_handler(|| {
+            final_cleanup();
+            std::process::exit(1);
+        })
+        .unwrap();
+    });
+
     unsafe { std::env::set_var("RUST_BACKTRACE", "1") };
     let args = Args::parse();
 
@@ -297,7 +306,10 @@ async fn main() {
         std::process::exit(1);
     }
 
-    // we have this cause our UI hides the cursor.. and if it fails anywhere in the middle, we
+    final_cleanup();
+}
+
+fn final_cleanup() {
     let mut stdout = std::io::stdout();
     stdout.execute(crossterm::cursor::Show).unwrap();
 }
