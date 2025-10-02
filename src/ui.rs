@@ -1,23 +1,48 @@
 use crate::pet;
 use colored::*;
 use crossterm::ExecutableCommand;
-use std::{io::Write, time::Duration};
+use std::{
+    io::{Write, stdout},
+    time::Duration,
+};
 
+use crate::CommandResult;
 const BOX_WIDTH: u16 = 45;
 const BOX_HEIGHT: u16 = 10;
 
-pub fn print_in_box(
-    stdout: &mut std::io::Stdout,
-    render_in_box: fn(
-        &mut std::io::Stdout,
-        curr_cursor_y: u16,
-        box_width: u16,
-        box_height: u16,
-        curr_frame: usize,
-    ) -> Result<(), std::io::Error>,
+pub fn pad_image(image: &str) -> String {
+    let max_width = image.lines().map(|line| line.len()).max().unwrap();
+    let padded_face: Vec<String> = image
+        .lines()
+        .map(|line| {
+            let len = line.len();
+            if len < max_width {
+                // Center pad with spaces
+                let pad = (max_width - len) / 2;
+                format!(
+                    "{}{}{}",
+                    " ".repeat(pad),
+                    line,
+                    " ".repeat(max_width - len - pad)
+                )
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    padded_face.join("\n")
+}
+
+pub fn print_in_box<F>(
+    mut render_in_box: F,
     max_number_of_frames: usize,
     fps: Option<u32>,
-) -> Result<(), std::io::Error> {
+) -> CommandResult
+where
+    F: FnMut(&mut std::io::Stdout, u16, u16, u16, usize) -> CommandResult,
+{
+    let mut stdout = stdout();
     stdout.execute(crossterm::cursor::SavePosition)?;
     let (mut w, mut h) = crossterm::terminal::size().unwrap();
     let mut frame: usize = 0;
@@ -65,7 +90,7 @@ pub fn print_in_box(
             ))?;
             stdout.execute(crossterm::cursor::SavePosition)?;
             render_in_box(
-                stdout,
+                &mut stdout,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
                 BOX_WIDTH as u16,
                 BOX_HEIGHT as u16,

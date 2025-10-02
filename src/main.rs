@@ -12,8 +12,7 @@ mod ui;
 mod utils;
 use crossterm::QueueableCommand;
 use crossterm::style::Print;
-use std::io::stdout;
-use ui::print_in_box;
+use ui::{pad_image, print_in_box};
 
 use sha2::{Digest, Sha256};
 
@@ -109,28 +108,52 @@ impl CommandIfPetExists for RemovePetCommand {
 impl CommandIfPetExists for StatusCommand {
     async fn execute(self, pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
         println!("{}", pet);
-        // Instead of just dumping Debug
-        do_status_animation().await?;
-        Ok(())
+        do_status_animation(&pet).await
     }
 }
 
-async fn do_status_animation() -> Result<(), std::io::Error> {
-    let mut stdout = stdout();
+async fn do_status_animation(pet: &Pet) -> CommandResult {
     print_in_box(
-        &mut stdout,
-        |stdout, curr_cursor_y, box_width, box_height, curr_frame| -> Result<(), std::io::Error> {
-            stdout.queue(crossterm::cursor::MoveTo(
-                box_width / 2,
-                curr_cursor_y + box_height / 2,
-            ))?;
-            stdout.queue(crossterm::cursor::MoveLeft(5))?;
-            // Example "pet" frames
-            let frames = vec![r"  (\_._/) ", r"  ( o.o ) ", r"  (> ^ <) "];
+        |stdout, curr_cursor_y, box_width, box_height, _curr_frame| -> CommandResult {
+            // TODO: Need to add colours
+            // TODO: Need to add animation
+            let eyes = match pet.happiness {
+                h if h < 20.0 => "x.x",
+                h if h < 70.0 => "o.o",
+                _ => "^.^",
+            };
 
-            let frame = frames[curr_frame % frames.len()];
+            let tongue = match pet.hunger {
+                h if h < 20.0 => "U",
+                h if h < 70.0 => "-",
+                _ => "~",
+            };
 
-            stdout.queue(Print(frame))?;
+            let full_face = [
+                format!("/\\_/\\"),
+                format!("( {} )", eyes),
+                format!("=  {}  =", tongue),
+            ]
+            .join("\n");
+
+            let max_width = full_face.lines().map(|line| line.len()).max().unwrap();
+            let max_height = full_face.lines().count();
+
+            // Pad lines to max width for alignment
+            let padded_face = pad_image(&full_face);
+
+            // Position to draw face
+            let start_x = box_width / 2 - max_width as u16 / 2;
+            let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
+
+            stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
+            let (orig_x, orig_y) = crossterm::cursor::position()?;
+
+            for (i, line) in padded_face.lines().enumerate() {
+                stdout.queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
+                stdout.queue(Print(line))?;
+            }
+
             Ok(())
         },
         10,
