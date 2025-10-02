@@ -43,7 +43,7 @@ pub fn print_in_box(
             }
         } else {
             is_showing_error = false;
-            let horizontal_border = "-".repeat(BOX_WIDTH as usize - 2);
+            let horizontal_border = "─".repeat(BOX_WIDTH as usize - 2);
             stdout.execute(crossterm::style::Print(format!(
                 "┌{}┐\n",
                 horizontal_border
