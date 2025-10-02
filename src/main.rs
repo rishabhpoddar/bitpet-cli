@@ -10,9 +10,7 @@ mod http_mocking;
 mod pet;
 mod ui;
 mod utils;
-use crossterm::QueueableCommand;
-use crossterm::style::Print;
-use ui::{pad_image, print_in_box};
+use ui::{draw_image_starting_at, pad_image, print_in_box};
 
 use sha2::{Digest, Sha256};
 
@@ -146,13 +144,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
             let start_x = box_width / 2 - max_width as u16 / 2;
             let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
 
-            stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
-            let (orig_x, orig_y) = crossterm::cursor::position()?;
-
-            for (i, line) in padded_face.lines().enumerate() {
-                stdout.queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
-                stdout.queue(Print(line))?;
-            }
+            draw_image_starting_at(stdout, &padded_face, start_x, start_y)?;
 
             Ok(())
         },

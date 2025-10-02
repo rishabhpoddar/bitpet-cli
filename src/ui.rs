@@ -1,6 +1,6 @@
 use crate::pet;
 use colored::*;
-use crossterm::ExecutableCommand;
+use crossterm::{ExecutableCommand, QueueableCommand};
 use std::{
     io::{Write, stdout},
     time::Duration,
@@ -9,6 +9,23 @@ use std::{
 use crate::CommandResult;
 const BOX_WIDTH: u16 = 45;
 const BOX_HEIGHT: u16 = 10;
+
+pub fn draw_image_starting_at(
+    stdout: &mut std::io::Stdout,
+    image: &str,
+    start_x: u16,
+    start_y: u16,
+) -> CommandResult {
+    stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
+    let (orig_x, orig_y) = crossterm::cursor::position()?;
+
+    for (i, line) in image.lines().enumerate() {
+        stdout.queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
+        stdout.queue(crossterm::style::Print(line))?;
+    }
+
+    Ok(())
+}
 
 pub fn pad_image(image: &str) -> String {
     let max_width = image.lines().map(|line| line.len()).max().unwrap();
@@ -67,6 +84,7 @@ where
                 ))?;
             }
         } else {
+            // TODO: In here, we are first drawing an empty box, and then drawing the pet in it which causes a flicker.. ideally, we want to form the whole box first, and then just draw once.
             is_showing_error = false;
             let horizontal_border = "─".repeat(BOX_WIDTH as usize - 2);
             stdout.execute(crossterm::style::Print(format!(
