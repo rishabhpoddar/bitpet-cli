@@ -95,17 +95,13 @@ impl AuthenticatedCommand for NewPetCommand {
 }
 
 async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
-    // TODO: Implement new pet logic
-    println!("New pet functionality not yet implemented");
-    Ok(())
+    todo!();
 }
 
 #[async_trait]
 impl CommandIfPetExists for RemovePetCommand {
     async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement remove pet logic
-        println!("Remove pet functionality not yet implemented");
-        Ok(())
+        todo!();
     }
 }
 
@@ -166,16 +162,13 @@ async fn feed_impl(_pet: Pet, _user: UserInfo, config: &mut Config) -> CommandRe
         );
     }
 
-    // TODO: Implement feed logic
-    Ok(())
+    todo!();
 }
 
 #[async_trait]
 impl CommandIfPetExists for PlayCommand {
     async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        // TODO: Implement play logic
-        println!("Play functionality not yet implemented");
-        Ok(())
+        todo!();
     }
 }
 
