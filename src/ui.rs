@@ -38,7 +38,7 @@ pub fn print_in_box(
                 is_showing_error = true;
                 stdout.execute(crossterm::cursor::SavePosition)?;
                 stdout.execute(crossterm::style::Print(
-                    "<Terminal width too small to display>".red(),
+                    "Error: Terminal too small to display your pet :(".red(),
                 ))?;
             }
         } else {
