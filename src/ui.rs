@@ -88,26 +88,26 @@ where
             // TODO: In here, we are first drawing an empty box, and then drawing the pet in it which causes a flicker.. ideally, we want to form the whole box first, and then just draw once.
             is_showing_error = false;
             let horizontal_border = "─".repeat(BOX_WIDTH as usize - 2);
-            stdout.execute(crossterm::style::Print(format!(
+            stdout.queue(crossterm::style::Print(format!(
                 "┌{}┐\n",
                 horizontal_border
             )))?;
             for _ in 0..BOX_HEIGHT - 2 {
-                stdout.execute(crossterm::style::Print(format!(
+                stdout.queue(crossterm::style::Print(format!(
                     "│{}│\n",
                     " ".repeat(BOX_WIDTH as usize - 2)
                 )))?;
             }
-            stdout.execute(crossterm::style::Print(format!(
+            stdout.queue(crossterm::style::Print(format!(
                 "└{}┘\n",
                 horizontal_border
             )))?;
             let curr_position_of_cursor = crossterm::cursor::position()?;
-            stdout.execute(crossterm::cursor::MoveTo(
+            stdout.queue(crossterm::cursor::MoveTo(
                 0,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
             ))?;
-            stdout.execute(crossterm::cursor::SavePosition)?;
+            stdout.queue(crossterm::cursor::SavePosition)?;
             render_in_box(
                 &mut stdout,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
