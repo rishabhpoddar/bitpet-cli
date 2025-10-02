@@ -1,5 +1,97 @@
 use crate::pet;
 use colored::*;
+use crossterm::ExecutableCommand;
+use std::{io::Write, time::Duration};
+
+const BOX_WIDTH: u16 = 45;
+const BOX_HEIGHT: u16 = 15;
+
+pub fn print_in_box(
+    stdout: &mut std::io::Stdout,
+    render_in_box: fn(
+        &mut std::io::Stdout,
+        curr_cursor_y: u16,
+        box_width: u16,
+        box_height: u16,
+        curr_frame: usize,
+    ) -> Result<(), std::io::Error>,
+    max_number_of_frames: usize,
+    fps: Option<u32>,
+) -> Result<(), std::io::Error> {
+    stdout.execute(crossterm::cursor::SavePosition)?;
+    let (mut w, mut h) = crossterm::terminal::size().unwrap();
+    let mut frame: usize = 0;
+    let mut is_showing_error = false;
+    while frame < max_number_of_frames {
+        while crossterm::event::poll(Duration::from_secs(0))? {
+            match crossterm::event::read()? {
+                crossterm::event::Event::Resize(nw, nh) => {
+                    w = nw;
+                    h = nh;
+                }
+                _ => (),
+            }
+        }
+        stdout.execute(crossterm::cursor::RestorePosition)?;
+        if w < BOX_WIDTH || h < BOX_HEIGHT {
+            if !is_showing_error {
+                is_showing_error = true;
+                stdout.execute(crossterm::cursor::SavePosition)?;
+                stdout.execute(crossterm::style::Print(
+                    "<Terminal width too small to display>".red(),
+                ))?;
+            }
+        } else {
+            is_showing_error = false;
+            let horizontal_border = "-".repeat(BOX_WIDTH as usize - 2);
+            stdout.execute(crossterm::style::Print(format!(
+                "┌{}┐\n",
+                horizontal_border
+            )))?;
+            for _ in 0..BOX_HEIGHT - 2 {
+                stdout.execute(crossterm::style::Print(format!(
+                    "│{}│\n",
+                    " ".repeat(BOX_WIDTH as usize - 2)
+                )))?;
+            }
+            stdout.execute(crossterm::style::Print(format!(
+                "└{}┘\n",
+                horizontal_border
+            )))?;
+            let curr_position_of_cursor = crossterm::cursor::position()?;
+            stdout.execute(crossterm::cursor::MoveTo(
+                0,
+                curr_position_of_cursor.1 - BOX_HEIGHT,
+            ))?;
+            stdout.execute(crossterm::cursor::SavePosition)?;
+            render_in_box(
+                stdout,
+                curr_position_of_cursor.1 - BOX_HEIGHT,
+                BOX_WIDTH as u16,
+                BOX_HEIGHT as u16,
+                frame,
+            )?;
+            stdout.flush()?;
+        }
+
+        std::thread::sleep(Duration::from_millis(1000 / fps.unwrap_or(60) as u64));
+        frame += 1;
+    }
+
+    if w < BOX_WIDTH || h < BOX_HEIGHT {
+        stdout.execute(crossterm::cursor::RestorePosition)?;
+        let curr_position_of_cursor = crossterm::cursor::position()?;
+        stdout.execute(crossterm::cursor::MoveTo(0, curr_position_of_cursor.1 + 2))?;
+    } else {
+        stdout.execute(crossterm::cursor::RestorePosition)?;
+        let curr_position_of_cursor = crossterm::cursor::position()?;
+        stdout.execute(crossterm::cursor::MoveTo(
+            0,
+            curr_position_of_cursor.1 + BOX_HEIGHT,
+        ))?;
+    }
+    Ok(())
+}
 
 pub fn get_pet_display(pet: &pet::Pet) -> String {
     // Calculate age in days

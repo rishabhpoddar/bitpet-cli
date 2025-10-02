@@ -11,10 +11,9 @@ mod pet;
 mod ui;
 mod utils;
 use crossterm::QueueableCommand;
-use crossterm::{ExecutableCommand, cursor, style::Print};
-use std::io::{Write, stdout};
-use std::time::Duration;
-use tokio::time::sleep;
+use crossterm::style::Print;
+use std::io::stdout;
+use ui::print_in_box;
 
 use sha2::{Digest, Sha256};
 
@@ -122,27 +121,25 @@ impl CommandIfPetExists for StatusCommand {
 
 async fn do_status_animation() -> Result<(), std::io::Error> {
     let mut stdout = stdout();
+    print_in_box(
+        &mut stdout,
+        |stdout, curr_cursor_y, box_width, box_height, curr_frame| -> Result<(), std::io::Error> {
+            stdout.queue(crossterm::cursor::MoveTo(
+                box_width / 2,
+                curr_cursor_y + box_height / 2,
+            ))?;
+            stdout.queue(crossterm::cursor::MoveLeft(5))?;
+            // Example "pet" frames
+            let frames = vec![r"  (\_._/) ", r"  ( o.o ) ", r"  (> ^ <) "];
 
-    // Example "pet" frames
-    let frames = vec![r"  (\_._/) ", r"  ( o.o ) ", r"  (> ^ <) "];
+            let frame = frames[curr_frame % frames.len()];
 
-    // Save the cursor position before we start
-    stdout.execute(cursor::SavePosition)?;
-
-    for i in 0..10 {
-        let frame = frames[i % frames.len()];
-
-        // Jump back to saved cursor pos and overwrite only the animation area
-        stdout.queue(cursor::RestorePosition)?;
-        stdout.queue(Print(frame))?;
-        stdout.flush()?;
-
-        sleep(Duration::from_millis(300)).await;
-    }
-
-    // Move cursor down after animation so the prompt continues below
-    stdout.execute(cursor::MoveToNextLine(2))?;
-    Ok(())
+            stdout.queue(Print(frame))?;
+            Ok(())
+        },
+        10,
+        Some(10),
+    )
 }
 
 #[async_trait]
