@@ -78,18 +78,13 @@ pub fn print_in_box(
         frame += 1;
     }
 
+    let mut dy = BOX_HEIGHT;
     if w < BOX_WIDTH || h < BOX_HEIGHT {
-        stdout.execute(crossterm::cursor::RestorePosition)?;
-        let curr_position_of_cursor = crossterm::cursor::position()?;
-        stdout.execute(crossterm::cursor::MoveTo(0, curr_position_of_cursor.1 + 2))?;
-    } else {
-        stdout.execute(crossterm::cursor::RestorePosition)?;
-        let curr_position_of_cursor = crossterm::cursor::position()?;
-        stdout.execute(crossterm::cursor::MoveTo(
-            0,
-            curr_position_of_cursor.1 + BOX_HEIGHT,
-        ))?;
+        dy = 2;
     }
+    stdout.execute(crossterm::cursor::RestorePosition)?;
+    let curr_position_of_cursor = crossterm::cursor::position()?;
+    stdout.execute(crossterm::cursor::MoveTo(0, curr_position_of_cursor.1 + dy))?;
     Ok(())
 }
 
