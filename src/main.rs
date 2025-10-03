@@ -116,12 +116,20 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
     print_in_box(
         |stdout, curr_cursor_y, box_width, box_height, _curr_frame| {
             // TODO: Need to add animation
+
+            let ear_colour = "#0000ff";
+            let eye_colour = match pet.happiness {
+                h if h < 20.0 => "#ff0000", // red
+                h if h < 70.0 => "#0000ff", // blue
+                _ => "#00ff00",             // green
+            };
             let eyes = match pet.happiness {
                 h if h < 20.0 => "x.x",
                 h if h < 70.0 => "o.o",
                 _ => "^.^",
             };
 
+            let tongue_colour = "#ff0000";
             let tongue = match pet.hunger {
                 h if h < 20.0 => "U",
                 h if h < 70.0 => "-",
@@ -135,13 +143,28 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
             ]
             .join("\n");
 
-            let colours = vec![vec![
-                "#0000ff".to_string(),
-                "#0000ff".to_string(),
-                "#0000ff".to_string(),
-                "#0000ff".to_string(),
-                "".to_string(),
-            ]];
+            let colours = vec![
+                vec![
+                    ear_colour.to_string(),
+                    ear_colour.to_string(),
+                    ear_colour.to_string(),
+                    ear_colour.to_string(),
+                    "".to_string(),
+                ],
+                vec![
+                    "".to_string(),
+                    "".to_string(),
+                    eye_colour.to_string(),
+                    "".to_string(),
+                    eye_colour.to_string(),
+                ],
+                vec![
+                    "".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                    tongue_colour.to_string(),
+                ],
+            ];
 
             // Pad lines to max width for alignment
             let (padded_face, padded_colours, max_width, max_height) =
