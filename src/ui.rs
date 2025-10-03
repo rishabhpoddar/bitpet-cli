@@ -77,6 +77,8 @@ pub fn draw_image_starting_at(
 pub fn pad_image_and_colours(
     image: String,
     colours: Vec<Vec<String>>,
+    padding_char: Option<char>,
+    default_colour: Option<String>,
 ) -> (String, Vec<Vec<String>>, usize, usize) {
     let lines: Vec<&str> = image.lines().collect();
     let max_width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
@@ -91,21 +93,26 @@ pub fn pad_image_and_colours(
 
         // pad face line
         let face_line = format!(
-            "{:pad$}{}{:pad2$}",
-            "",
+            "{}{}{}",
+            padding_char.unwrap_or(' ').to_string().repeat(pad),
             line,
-            "",
-            pad = pad,
-            pad2 = max_width - line_len - pad
+            padding_char
+                .unwrap_or(' ')
+                .to_string()
+                .repeat(max_width - line_len - pad)
         );
         padded_face.push(face_line);
 
         // pad colour line
-        let mut colour_line = vec!["".to_string(); pad];
+        let mut colour_line = vec![default_colour.clone().unwrap_or("".to_string()); pad];
         let input_colours = colours.get(i).cloned().unwrap_or_default();
-        colour_line
-            .extend((0..line_len).map(|j| input_colours.get(j).cloned().unwrap_or_default()));
-        colour_line.resize(max_width, "".to_string());
+        colour_line.extend((0..line_len).map(|j| {
+            input_colours
+                .get(j)
+                .cloned()
+                .unwrap_or(default_colour.clone().unwrap_or("".to_string()))
+        }));
+        colour_line.resize(max_width, default_colour.clone().unwrap_or("".to_string()));
         padded_colours.push(colour_line);
     }
 

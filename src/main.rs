@@ -168,7 +168,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
 
             // Pad lines to max width for alignment
             let (padded_face, padded_colours, max_width, max_height) =
-                pad_image_and_colours(full_face, colours);
+                pad_image_and_colours(full_face, colours, None, None);
 
             // Position to draw face
             let start_x = box_width / 2 - max_width as u16 / 2;
