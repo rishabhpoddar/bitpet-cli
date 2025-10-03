@@ -11,7 +11,7 @@ mod pet;
 mod ui;
 mod utils;
 use crossterm::ExecutableCommand;
-use ui::{draw_image_starting_at, pad_image, print_in_box};
+use ui::{draw_image_starting_at, pad_image_and_colours, print_in_box};
 extern crate ctrlc;
 
 use sha2::{Digest, Sha256};
@@ -115,7 +115,6 @@ impl CommandIfPetExists for StatusCommand {
 async fn do_status_animation(pet: &Pet) -> CommandResult {
     print_in_box(
         |stdout, curr_cursor_y, box_width, box_height, _curr_frame| {
-            // TODO: Need to add colours
             // TODO: Need to add animation
             let eyes = match pet.happiness {
                 h if h < 20.0 => "x.x",
@@ -136,14 +135,23 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
             ]
             .join("\n");
 
+            let colours = vec![vec![
+                "#0000ff".to_string(),
+                "#0000ff".to_string(),
+                "#0000ff".to_string(),
+                "#0000ff".to_string(),
+                "".to_string(),
+            ]];
+
             // Pad lines to max width for alignment
-            let (padded_face, max_width, max_height) = pad_image(&full_face);
+            let (padded_face, padded_colours, max_width, max_height) =
+                pad_image_and_colours(full_face, colours);
 
             // Position to draw face
             let start_x = box_width / 2 - max_width as u16 / 2;
             let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
 
-            draw_image_starting_at(stdout, &padded_face, start_x, start_y)
+            draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
         },
         10,
         Some(10),

@@ -1,5 +1,5 @@
 use crate::pet;
-use colored::*;
+use crossterm::style::{Color, Stylize};
 use crossterm::{ExecutableCommand, QueueableCommand};
 use std::{
     io::{Write, stdout},
@@ -12,6 +12,17 @@ use crate::CommandResult;
 const BOX_WIDTH: u16 = 45;
 const BOX_HEIGHT: u16 = 10;
 
+fn hex_to_rgb(hex: &str) -> Option<Color> {
+    // expect "#RRGGBB"
+    if !hex.starts_with('#') || hex.len() != 7 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[1..3], 16).ok()?;
+    let g = u8::from_str_radix(&hex[3..5], 16).ok()?;
+    let b = u8::from_str_radix(&hex[5..7], 16).ok()?;
+    Some(Color::Rgb { r, g, b })
+}
+
 pub struct ImageDrawnArea {
     start_x: u16,
     start_y: u16,
@@ -22,13 +33,35 @@ pub struct ImageDrawnArea {
 pub fn draw_image_starting_at(
     stdout: &mut std::io::Stdout,
     image: &str,
+    colours: &Vec<Vec<String>>,
     start_x: u16,
     start_y: u16,
 ) -> Result<ImageDrawnArea, Box<dyn CustomErrorTrait>> {
+    let mut colourised_image = String::new();
+    {
+        for (i, line) in image.lines().enumerate() {
+            let colour_line = colours.get(i).unwrap();
+            let mut curr_line = String::new();
+            for (j, ch) in line.chars().enumerate() {
+                let hex = colour_line.get(j).unwrap();
+                let styled = if hex == "" {
+                    ch.to_string()
+                } else if let Some(rgb) = hex_to_rgb(hex) {
+                    ch.to_string().with(rgb).to_string()
+                } else {
+                    ch.to_string()
+                };
+                curr_line.push_str(&styled);
+            }
+            colourised_image.push_str(&curr_line);
+            colourised_image.push('\n');
+        }
+    }
+
     stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
     let (orig_x, orig_y) = crossterm::cursor::position()?;
 
-    for (i, line) in image.lines().enumerate() {
+    for (i, line) in colourised_image.lines().enumerate() {
         stdout.queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
         stdout.queue(crossterm::style::Print(line))?;
     }
@@ -41,29 +74,47 @@ pub fn draw_image_starting_at(
     })
 }
 
-pub fn pad_image(image: &str) -> (String, usize, usize) {
-    let max_width = image.lines().map(|line| line.len()).max().unwrap();
-    let max_height = image.lines().count();
-    let padded_face: Vec<String> = image
-        .lines()
-        .map(|line| {
-            let len = line.len();
-            if len < max_width {
-                // Center pad with spaces
-                let pad = (max_width - len) / 2;
-                format!(
-                    "{}{}{}",
-                    " ".repeat(pad),
-                    line,
-                    " ".repeat(max_width - len - pad)
-                )
-            } else {
-                line.to_string()
-            }
-        })
-        .collect();
+pub fn pad_image_and_colours(
+    image: String,
+    colours: Vec<Vec<String>>,
+) -> (String, Vec<Vec<String>>, usize, usize) {
+    let lines: Vec<&str> = image.lines().collect();
+    let max_width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+    let max_height = lines.len();
 
-    (padded_face.join("\n"), max_width, max_height)
+    let mut padded_face = Vec::with_capacity(max_height);
+    let mut padded_colours = Vec::with_capacity(max_height);
+
+    for (i, line) in lines.iter().enumerate() {
+        let line_len = line.len();
+        let pad = (max_width - line_len) / 2;
+
+        // pad face line
+        let face_line = format!(
+            "{:pad$}{}{:pad2$}",
+            "",
+            line,
+            "",
+            pad = pad,
+            pad2 = max_width - line_len - pad
+        );
+        padded_face.push(face_line);
+
+        // pad colour line
+        let mut colour_line = vec!["".to_string(); pad];
+        let input_colours = colours.get(i).cloned().unwrap_or_default();
+        colour_line
+            .extend((0..line_len).map(|j| input_colours.get(j).cloned().unwrap_or_default()));
+        colour_line.resize(max_width, "".to_string());
+        padded_colours.push(colour_line);
+    }
+
+    (
+        padded_face.join("\n"),
+        padded_colours,
+        max_width,
+        max_height,
+    )
 }
 
 pub fn print_in_box<F>(
@@ -102,9 +153,9 @@ where
             if !is_showing_error {
                 is_showing_error = true;
                 stdout.execute(crossterm::cursor::SavePosition)?;
-                stdout.execute(crossterm::style::Print(
-                    "Error: Terminal too small to display your pet :(".red(),
-                ))?;
+                stdout.execute(crossterm::style::Print(colored::Colorize::red(
+                    "Error: Terminal too small to display your pet :(",
+                )))?;
             }
         } else {
             is_showing_error = false;
