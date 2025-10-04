@@ -123,10 +123,16 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
                 h if h < 70.0 => "#0000ff", // blue
                 _ => "#00ff00",             // green
             };
-            let eyes = match pet.happiness {
+            let mut eyes = match pet.happiness {
                 h if h < 20.0 => "x.x",
                 h if h < 70.0 => "o.o",
                 _ => "^.^",
+            };
+
+            eyes = if _curr_frame % 40 == 0 && _curr_frame != 0 {
+                "-.-"
+            } else {
+                eyes
             };
 
             let tongue_colour = "#ff0000";
@@ -176,8 +182,8 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
 
             draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
         },
-        10,
-        Some(10),
+        150,
+        Some(30),
     )
 }
 
