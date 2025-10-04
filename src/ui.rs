@@ -156,7 +156,7 @@ where
             }
         }
         stdout.execute(crossterm::cursor::RestorePosition)?;
-        if w < BOX_WIDTH || h < BOX_HEIGHT {
+        if w <= BOX_WIDTH || h <= BOX_HEIGHT {
             if !is_showing_error {
                 is_showing_error = true;
                 stdout.execute(crossterm::cursor::SavePosition)?;
@@ -222,7 +222,7 @@ where
     }
 
     let mut dy = BOX_HEIGHT;
-    if w < BOX_WIDTH || h < BOX_HEIGHT {
+    if w <= BOX_WIDTH || h <= BOX_HEIGHT {
         dy = 2;
     }
     stdout.execute(crossterm::cursor::RestorePosition)?;
