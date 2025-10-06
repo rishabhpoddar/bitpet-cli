@@ -22,7 +22,7 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
-use pet::{CommandIfPetExists, Pet, execute_command_if_pet_exists};
+use pet::{CommandIfPetExists, Pet, execute_command_if_pet_exists, get_pet_status};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -98,14 +98,15 @@ async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult
 
 #[async_trait]
 impl CommandIfPetExists for RemovePetCommand {
-    async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
         todo!();
     }
 }
 
 #[async_trait]
 impl CommandIfPetExists for StatusCommand {
-    async fn execute(self, pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
+        let pet = get_pet_status(_user.token.as_str(), _config).await?;
         println!("{}", pet);
         do_status_animation(&pet).await
     }
@@ -188,12 +189,12 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
 
 #[async_trait]
 impl CommandIfPetExists for FeedCommand {
-    async fn execute(self, pet: Pet, user: UserInfo, config: &mut Config) -> CommandResult {
-        feed_impl(pet, user, config).await
+    async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult {
+        feed_impl(user, config).await
     }
 }
 
-async fn feed_impl(_pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
+async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
     let normalised_paths = config.get_valid_normalised_paths_and_save()?;
     if normalised_paths.is_empty() {
         println!("No Git repositories added yet!");
@@ -215,14 +216,14 @@ async fn feed_impl(_pet: Pet, _user: UserInfo, config: &mut Config) -> CommandRe
 
 #[async_trait]
 impl CommandIfPetExists for PlayCommand {
-    async fn execute(self, _pet: Pet, _user: UserInfo, _config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
         todo!();
     }
 }
 
 #[async_trait]
 impl CommandIfPetExists for AddRepoCommand {
-    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         add_repo_impl(self.path, config).await
     }
 }
@@ -243,7 +244,7 @@ async fn add_repo_impl(path: String, config: &mut Config) -> CommandResult {
 
 #[async_trait]
 impl CommandIfPetExists for RemoveRepoCommand {
-    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         remove_repo_impl(self.path, config).await
     }
 }
@@ -272,7 +273,7 @@ async fn remove_repo_impl(path: String, config: &mut Config) -> CommandResult {
 
 #[async_trait]
 impl CommandIfPetExists for ListReposCommand {
-    async fn execute(self, _pet: Pet, _user: UserInfo, config: &mut Config) -> CommandResult {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
         list_repos_impl(config).await
     }
 }

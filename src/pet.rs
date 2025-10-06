@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
-use crate::constants::STATUS_PATH;
+use crate::constants::{DOES_PET_EXIST_PATH, STATUS_PATH};
 use crate::error::CustomErrorTrait;
 use crate::http_mocking::MockingMiddleware;
 use crate::ui::get_pet_display;
@@ -29,7 +29,7 @@ impl std::fmt::Display for Pet {
 
 #[async_trait]
 pub trait CommandIfPetExists {
-    async fn execute(self, pet: Pet, user: UserInfo, config: &mut Config) -> CommandResult;
+    async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult;
 }
 
 pub async fn execute_command_if_pet_exists(
@@ -42,24 +42,51 @@ pub async fn execute_command_if_pet_exists(
     #[async_trait]
     impl<C: CommandIfPetExists + Send> AuthenticatedCommand for AuthCommandIfPetExists<C> {
         async fn execute(self, user: UserInfo, config: &mut Config) -> CommandResult {
-            let pet = get_pet_status(user.token.as_str(), config).await?;
-            if pet.is_none() {
+            let does_exist = does_pet_exist(user.token.as_str(), config).await?;
+            if !does_exist {
                 return Err(format!(
                     "You do not yet have a pet! Please use the 'pet new-pet' command to create one."
                 )
                 .into());
             } else {
-                self.command.execute(pet.unwrap(), user, config).await
+                self.command.execute(user, config).await
             }
         }
     }
     execute_authenticated_command(config, AuthCommandIfPetExists { command }).await
 }
 
-async fn get_pet_status(
+async fn does_pet_exist(
     token: &str,
     config: &mut Config,
-) -> Result<Option<Pet>, Box<dyn CustomErrorTrait>> {
+) -> Result<bool, Box<dyn CustomErrorTrait>> {
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
+    let response = client
+        .get("https://api.bitpet.dev".to_owned() + DOES_PET_EXIST_PATH)
+        .bearer_auth(token)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        Ok(true)
+    } else if response.status().as_u16() == 404 {
+        Ok(false)
+    } else if response.status().as_u16() == 401 {
+        config.user = None;
+        config.save()?;
+        Err(format!("Oops! Please login again!").into())
+    } else {
+        let error_text = response.text().await?;
+        Err(format!("Failed to get pet status: {}", error_text).into())
+    }
+}
+
+pub async fn get_pet_status(
+    token: &str,
+    config: &mut Config,
+) -> Result<Pet, Box<dyn CustomErrorTrait>> {
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
@@ -71,9 +98,7 @@ async fn get_pet_status(
 
     if response.status().is_success() {
         let pet: Pet = response.json().await?;
-        Ok(Some(pet))
-    } else if response.status().as_u16() == 404 {
-        Ok(None)
+        Ok(pet)
     } else if response.status().as_u16() == 401 {
         config.user = None;
         config.save()?;

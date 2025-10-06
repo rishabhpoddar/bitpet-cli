@@ -1,4 +1,4 @@
-use crate::constants::{LOGIN_PATH, LOGOUT_PATH, STATUS_PATH};
+use crate::constants::{DOES_PET_EXIST_PATH, LOGIN_PATH, LOGOUT_PATH, STATUS_PATH};
 use crate::pet::Pet;
 use http::Extensions;
 use reqwest::{Body, Request, Response};
@@ -64,6 +64,18 @@ impl Middleware for MockingMiddleware {
                     return Ok(http::Response::builder()
                         .status(200)
                         .body(Body::from("Logged out successfully!"))
+                        .unwrap()
+                        .into());
+                }
+            }
+        } else if path == DOES_PET_EXIST_PATH {
+            let token = req.headers().get("Authorization");
+            if !token.is_none() {
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
+                    return Ok(http::Response::builder()
+                        .status(200)
+                        .body("")
                         .unwrap()
                         .into());
                 }
