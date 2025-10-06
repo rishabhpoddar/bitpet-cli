@@ -10,8 +10,7 @@ mod http_mocking;
 mod pet;
 mod ui;
 mod utils;
-use crossterm::ExecutableCommand;
-use ui::{draw_image_starting_at, pad_image_and_colours, print_in_box};
+use ui::{draw_image_starting_at, final_cleanup_for_terminal, pad_image_and_colours, print_in_box};
 extern crate ctrlc;
 
 use sha2::{Digest, Sha256};
@@ -297,7 +296,8 @@ async fn list_repos_impl(config: &mut Config) -> CommandResult {
 async fn main() {
     tokio::task::spawn(async {
         ctrlc::set_handler(|| {
-            final_cleanup();
+            let mut stdout = std::io::stdout();
+            final_cleanup_for_terminal(&mut stdout);
             std::process::exit(1);
         })
         .unwrap();
@@ -342,11 +342,4 @@ async fn main() {
         utils::print_error_chain(e);
         std::process::exit(1);
     }
-
-    final_cleanup();
-}
-
-fn final_cleanup() {
-    let mut stdout = std::io::stdout();
-    stdout.execute(crossterm::cursor::Show).unwrap();
 }

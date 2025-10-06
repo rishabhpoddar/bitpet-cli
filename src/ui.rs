@@ -31,7 +31,7 @@ pub struct ImageDrawnArea {
 }
 
 pub fn draw_image_starting_at(
-    stdout: &mut std::io::Stdout,
+    stdout: &mut StdoutContainer,
     image: &str,
     colours: &Vec<Vec<String>>,
     start_x: u16,
@@ -58,12 +58,16 @@ pub fn draw_image_starting_at(
         }
     }
 
-    stdout.queue(crossterm::cursor::MoveTo(start_x, start_y))?;
+    stdout
+        .stdout
+        .queue(crossterm::cursor::MoveTo(start_x, start_y))?;
     let (orig_x, orig_y) = crossterm::cursor::position()?;
 
     for (i, line) in colourised_image.lines().enumerate() {
-        stdout.queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
-        stdout.queue(crossterm::style::Print(line))?;
+        stdout
+            .stdout
+            .queue(crossterm::cursor::MoveTo(orig_x, orig_y + i as u16))?;
+        stdout.stdout.queue(crossterm::style::Print(line))?;
     }
 
     Ok(ImageDrawnArea {
@@ -124,6 +128,20 @@ pub fn pad_image_and_colours(
     )
 }
 
+pub struct StdoutContainer {
+    stdout: std::io::Stdout,
+}
+
+impl Drop for StdoutContainer {
+    fn drop(&mut self) {
+        final_cleanup_for_terminal(&mut self.stdout);
+    }
+}
+
+pub fn final_cleanup_for_terminal(stdout: &mut std::io::Stdout) {
+    stdout.execute(crossterm::cursor::Show).unwrap();
+}
+
 pub fn print_in_box<F>(
     mut render_in_box: F,
     max_number_of_frames: usize,
@@ -131,16 +149,18 @@ pub fn print_in_box<F>(
 ) -> CommandResult
 where
     F: FnMut(
-        &mut std::io::Stdout,
+        &mut StdoutContainer,
         u16,
         u16,
         u16,
         usize,
     ) -> Result<ImageDrawnArea, Box<dyn CustomErrorTrait>>,
 {
-    let mut stdout = stdout();
-    stdout.execute(crossterm::cursor::Hide)?;
-    stdout.execute(crossterm::cursor::SavePosition)?;
+    let mut stdout_container = StdoutContainer { stdout: stdout() };
+    stdout_container.stdout.execute(crossterm::cursor::Hide)?;
+    stdout_container
+        .stdout
+        .execute(crossterm::cursor::SavePosition)?;
     let (mut w, mut h) = crossterm::terminal::size().unwrap();
     let mut frame: usize = 0;
     let mut is_showing_error = false;
@@ -155,39 +175,55 @@ where
                 _ => (),
             }
         }
-        stdout.execute(crossterm::cursor::RestorePosition)?;
+        stdout_container
+            .stdout
+            .execute(crossterm::cursor::RestorePosition)?;
         if w <= BOX_WIDTH || h <= BOX_HEIGHT {
             if !is_showing_error {
                 is_showing_error = true;
-                stdout.execute(crossterm::cursor::SavePosition)?;
-                stdout.execute(crossterm::style::Print(colored::Colorize::red(
-                    "Error: Terminal too small to display your pet :(",
-                )))?;
+                stdout_container
+                    .stdout
+                    .execute(crossterm::cursor::SavePosition)?;
+                stdout_container.stdout.execute(crossterm::style::Print(
+                    colored::Colorize::red("Error: Terminal too small to display your pet :("),
+                ))?;
             }
         } else {
             is_showing_error = false;
             let horizontal_border = "─".repeat(BOX_WIDTH as usize - 2);
-            stdout.queue(crossterm::style::Print(format!(
-                "┌{}┐\n",
-                horizontal_border
-            )))?;
+            stdout_container
+                .stdout
+                .queue(crossterm::style::Print(format!(
+                    "┌{}┐\n",
+                    horizontal_border
+                )))?;
             for _ in 0..BOX_HEIGHT - 2 {
-                stdout.queue(crossterm::style::Print("│"))?;
-                stdout.queue(crossterm::cursor::MoveRight(BOX_WIDTH as u16 - 2))?;
-                stdout.queue(crossterm::style::Print("│\n"))?;
+                stdout_container
+                    .stdout
+                    .queue(crossterm::style::Print("│"))?;
+                stdout_container
+                    .stdout
+                    .queue(crossterm::cursor::MoveRight(BOX_WIDTH as u16 - 2))?;
+                stdout_container
+                    .stdout
+                    .queue(crossterm::style::Print("│\n"))?;
             }
-            stdout.queue(crossterm::style::Print(format!(
-                "└{}┘\n",
-                horizontal_border
-            )))?;
+            stdout_container
+                .stdout
+                .queue(crossterm::style::Print(format!(
+                    "└{}┘\n",
+                    horizontal_border
+                )))?;
             let curr_position_of_cursor = crossterm::cursor::position()?;
-            stdout.queue(crossterm::cursor::MoveTo(
+            stdout_container.stdout.queue(crossterm::cursor::MoveTo(
                 0,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
             ))?;
-            stdout.queue(crossterm::cursor::SavePosition)?;
+            stdout_container
+                .stdout
+                .queue(crossterm::cursor::SavePosition)?;
             let image_drawn_area = render_in_box(
-                &mut stdout,
+                &mut stdout_container,
                 curr_position_of_cursor.1 - BOX_HEIGHT,
                 BOX_WIDTH as u16,
                 BOX_HEIGHT as u16,
@@ -209,12 +245,16 @@ where
                 }
 
                 for to_clear in areas_to_clear {
-                    stdout.queue(crossterm::cursor::MoveTo(to_clear.0, to_clear.1))?;
-                    stdout.queue(crossterm::style::Print(" "))?;
+                    stdout_container
+                        .stdout
+                        .queue(crossterm::cursor::MoveTo(to_clear.0, to_clear.1))?;
+                    stdout_container
+                        .stdout
+                        .queue(crossterm::style::Print(" "))?;
                 }
             }
             older_image_drawn_area = Some(image_drawn_area);
-            stdout.flush()?;
+            stdout_container.stdout.flush()?;
         }
 
         std::thread::sleep(Duration::from_millis(1000 / fps.unwrap_or(60) as u64));
@@ -225,9 +265,13 @@ where
     if w <= BOX_WIDTH || h <= BOX_HEIGHT {
         dy = 2;
     }
-    stdout.execute(crossterm::cursor::RestorePosition)?;
+    stdout_container
+        .stdout
+        .execute(crossterm::cursor::RestorePosition)?;
     let curr_position_of_cursor = crossterm::cursor::position()?;
-    stdout.execute(crossterm::cursor::MoveTo(0, curr_position_of_cursor.1 + dy))?;
+    stdout_container
+        .stdout
+        .execute(crossterm::cursor::MoveTo(0, curr_position_of_cursor.1 + dy))?;
     Ok(())
 }
 
