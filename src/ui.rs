@@ -1,6 +1,7 @@
 use crate::pet;
 use crossterm::style::{Color, Stylize};
 use crossterm::{ExecutableCommand, QueueableCommand};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Write, stdout},
     time::Duration,
@@ -11,6 +12,20 @@ use crate::error::CustomErrorTrait;
 use crate::CommandResult;
 const BOX_WIDTH: u16 = 45;
 const BOX_HEIGHT: u16 = 10;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AnimationWindow {
+    pub start_frame_inclusive: u64,
+    pub end_frame_inclusive: u64,
+    pub image: String,
+    pub colours: Vec<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Animation {
+    pub windows: Vec<AnimationWindow>,
+    pub fps: u32,
+}
 
 fn hex_to_rgb(hex: &str) -> Option<Color> {
     // expect "#RRGGBB"
@@ -30,7 +45,40 @@ pub struct ImageDrawnArea {
     height: u16,
 }
 
-pub fn draw_image_starting_at(
+pub async fn draw_animation_in_center_of_box(animation: &Animation) -> CommandResult {
+    print_in_box(
+        |stdout, curr_cursor_y, box_width, box_height, curr_frame| {
+            let mut curr_image: Option<String> = None;
+            let mut curr_colours: Option<Vec<Vec<String>>> = None;
+            for window in animation.windows.clone() {
+                if curr_frame >= window.start_frame_inclusive as usize
+                    && curr_frame <= window.end_frame_inclusive as usize
+                {
+                    curr_image = Some(window.image);
+                    curr_colours = Some(window.colours);
+                    break;
+                }
+            }
+
+            assert!(curr_image.is_some());
+            assert!(curr_colours.is_some());
+
+            // Pad lines to max width for alignment
+            let (padded_face, padded_colours, max_width, max_height) =
+                pad_image_and_colours(curr_image.unwrap(), curr_colours.unwrap(), None, None);
+
+            // Position to draw face
+            let start_x = box_width / 2 - max_width as u16 / 2;
+            let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
+
+            draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
+        },
+        animation.windows.last().unwrap().end_frame_inclusive as usize + 1,
+        Some(animation.fps),
+    )
+}
+
+fn draw_image_starting_at(
     stdout: &mut StdoutContainer,
     image: &str,
     colours: &Vec<Vec<String>>,
@@ -78,7 +126,7 @@ pub fn draw_image_starting_at(
     })
 }
 
-pub fn pad_image_and_colours(
+fn pad_image_and_colours(
     image: String,
     colours: Vec<Vec<String>>,
     padding_char: Option<char>,

@@ -10,7 +10,7 @@ mod http_mocking;
 mod pet;
 mod ui;
 mod utils;
-use ui::{draw_image_starting_at, final_cleanup_for_terminal, pad_image_and_colours, print_in_box};
+use ui::{draw_animation_in_center_of_box, final_cleanup_for_terminal};
 extern crate ctrlc;
 
 use sha2::{Digest, Sha256};
@@ -22,7 +22,7 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
-use pet::{CommandIfPetExists, Pet, execute_command_if_pet_exists, get_pet_status};
+use pet::{CommandIfPetExists, execute_command_if_pet_exists, get_pet_status};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -107,84 +107,9 @@ impl CommandIfPetExists for RemovePetCommand {
 impl CommandIfPetExists for StatusCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
         let pet = get_pet_status(_user.token.as_str(), _config).await?;
-        println!("{}", pet);
-        do_status_animation(&pet).await
+        println!("{}", pet.0);
+        draw_animation_in_center_of_box(&pet.1).await
     }
-}
-
-async fn do_status_animation(pet: &Pet) -> CommandResult {
-    print_in_box(
-        |stdout, curr_cursor_y, box_width, box_height, curr_frame| {
-            // TODO: Need to add animation
-
-            let ear_colour = "#0000ff";
-            let eye_colour = match pet.happiness {
-                h if h < 20.0 => "#ff0000", // red
-                h if h < 70.0 => "#0000ff", // blue
-                _ => "#00ff00",             // green
-            };
-            let mut eyes = match pet.happiness {
-                h if h < 20.0 => "x.x",
-                h if h < 70.0 => "o.o",
-                _ => "^.^",
-            };
-
-            eyes = if curr_frame % 40 == 0 && curr_frame != 0 {
-                "-.-"
-            } else {
-                eyes
-            };
-
-            let tongue_colour = "#ff0000";
-            let tongue = match pet.hunger {
-                h if h < 20.0 => "U",
-                h if h < 70.0 => "-",
-                _ => "~",
-            };
-
-            let full_face = [
-                format!("/\\_/\\"),
-                format!("( {} )", eyes),
-                format!("=  {}  =", tongue),
-            ]
-            .join("\n");
-
-            let colours = vec![
-                vec![
-                    ear_colour.to_string(),
-                    ear_colour.to_string(),
-                    ear_colour.to_string(),
-                    ear_colour.to_string(),
-                    "".to_string(),
-                ],
-                vec![
-                    "".to_string(),
-                    "".to_string(),
-                    eye_colour.to_string(),
-                    "".to_string(),
-                    eye_colour.to_string(),
-                ],
-                vec![
-                    "".to_string(),
-                    "".to_string(),
-                    "".to_string(),
-                    tongue_colour.to_string(),
-                ],
-            ];
-
-            // Pad lines to max width for alignment
-            let (padded_face, padded_colours, max_width, max_height) =
-                pad_image_and_colours(full_face, colours, None, None);
-
-            // Position to draw face
-            let start_x = box_width / 2 - max_width as u16 / 2;
-            let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
-
-            draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
-        },
-        100,
-        Some(30),
-    )
 }
 
 #[async_trait]

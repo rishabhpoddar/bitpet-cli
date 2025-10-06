@@ -5,6 +5,7 @@ use crate::config::{Config, UserInfo};
 use crate::constants::{DOES_PET_EXIST_PATH, STATUS_PATH};
 use crate::error::CustomErrorTrait;
 use crate::http_mocking::MockingMiddleware;
+use crate::ui::Animation;
 use crate::ui::get_pet_display;
 use async_trait::async_trait;
 
@@ -83,10 +84,16 @@ async fn does_pet_exist(
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct StatusAPIResult {
+    pub animation: Animation,
+    pub pet: Pet,
+}
+
 pub async fn get_pet_status(
     token: &str,
     config: &mut Config,
-) -> Result<Pet, Box<dyn CustomErrorTrait>> {
+) -> Result<(Pet, Animation), Box<dyn CustomErrorTrait>> {
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
@@ -97,8 +104,8 @@ pub async fn get_pet_status(
         .await?;
 
     if response.status().is_success() {
-        let pet: Pet = response.json().await?;
-        Ok(pet)
+        let pet: StatusAPIResult = response.json().await?;
+        Ok((pet.pet, pet.animation))
     } else if response.status().as_u16() == 401 {
         config.user = None;
         config.save()?;
