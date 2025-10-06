@@ -114,7 +114,7 @@ impl CommandIfPetExists for StatusCommand {
 
 async fn do_status_animation(pet: &Pet) -> CommandResult {
     print_in_box(
-        |stdout, curr_cursor_y, box_width, box_height, _curr_frame| {
+        |stdout, curr_cursor_y, box_width, box_height, curr_frame| {
             // TODO: Need to add animation
 
             let ear_colour = "#0000ff";
@@ -129,7 +129,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
                 _ => "^.^",
             };
 
-            eyes = if _curr_frame % 40 == 0 && _curr_frame != 0 {
+            eyes = if curr_frame % 40 == 0 && curr_frame != 0 {
                 "-.-"
             } else {
                 eyes
@@ -182,7 +182,7 @@ async fn do_status_animation(pet: &Pet) -> CommandResult {
 
             draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
         },
-        150,
+        100,
         Some(30),
     )
 }
