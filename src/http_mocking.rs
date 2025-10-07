@@ -110,12 +110,39 @@ fn generate_pet_status_animation() -> Animation {
 
     let mut curr_window_start: u64 = 0;
     let mut curr_frame: u64 = 0;
+    let mut previous_delta_x_from_center: i16 = 0;
+    let mut previous_delta_y_from_center: i16 = 0;
     let mut previous_image: Option<String> = None;
     let mut previous_colours: Option<Vec<Vec<String>>> = None;
+    let mut total_jumps = 0;
+    let mut last_jump_frame = 0;
     while curr_frame < total_frames {
-        let (image, colours) = get_pet_status_animation_for_frame(&PET, curr_frame);
+        let delta_x_from_center = 0;
+        let delta_y_from_center = if curr_frame == 0 || curr_frame % 15 != 0 || total_jumps >= 3 {
+            if curr_frame > 1 && (curr_frame - last_jump_frame <= 3) {
+                if curr_frame - last_jump_frame == 1 {
+                    previous_delta_y_from_center - 1
+                } else {
+                    previous_delta_y_from_center
+                }
+            } else {
+                std::cmp::min(0, previous_delta_y_from_center + 2)
+            }
+        } else {
+            total_jumps += 1;
+            last_jump_frame = curr_frame;
+            previous_delta_y_from_center - 1
+        };
+        let (image, colours) = get_pet_status_animation_for_frame(
+            &PET,
+            curr_frame,
+            delta_y_from_center < 0,
+            total_jumps >= 3,
+        );
         if previous_image.as_ref().is_some()
             && previous_colours.as_ref().is_some()
+            && previous_delta_x_from_center == delta_x_from_center
+            && previous_delta_y_from_center == delta_y_from_center
             && previous_image.as_ref().unwrap() == &image
             && previous_colours.as_ref().unwrap() == &colours
         {
@@ -127,8 +154,12 @@ fn generate_pet_status_animation() -> Animation {
                     end_frame_inclusive: curr_frame - 1,
                     image: previous_image.unwrap(),
                     colours: previous_colours.unwrap(),
+                    delta_x_from_center: previous_delta_x_from_center,
+                    delta_y_from_center: previous_delta_y_from_center,
                 });
             }
+            previous_delta_x_from_center = delta_x_from_center;
+            previous_delta_y_from_center = delta_y_from_center;
             curr_window_start = curr_frame;
             previous_image = Some(image);
             previous_colours = Some(colours);
@@ -140,12 +171,19 @@ fn generate_pet_status_animation() -> Animation {
         end_frame_inclusive: curr_frame - 1,
         image: previous_image.unwrap(),
         colours: previous_colours.unwrap(),
+        delta_x_from_center: previous_delta_x_from_center,
+        delta_y_from_center: previous_delta_y_from_center,
     });
 
     return Animation { windows, fps };
 }
 
-fn get_pet_status_animation_for_frame(pet: &Pet, curr_frame: u64) -> (String, Vec<Vec<String>>) {
+fn get_pet_status_animation_for_frame(
+    pet: &Pet,
+    curr_frame: u64,
+    is_in_the_air: bool,
+    is_done_jumping: bool,
+) -> (String, Vec<Vec<String>>) {
     let ear_colour = "#0000ff";
     let eye_colour = match pet.happiness {
         h if h < 20.0 => "#ff0000", // red
@@ -158,11 +196,17 @@ fn get_pet_status_animation_for_frame(pet: &Pet, curr_frame: u64) -> (String, Ve
         _ => "^.^",
     };
 
-    eyes = if curr_frame % 40 == 0 && curr_frame != 0 {
-        "-.-"
-    } else {
-        eyes
-    };
+    if is_done_jumping {
+        eyes = if curr_frame % 40 == 0 && curr_frame != 0 {
+            "-.-"
+        } else {
+            eyes
+        };
+    }
+
+    if is_in_the_air {
+        eyes = "-.-";
+    }
 
     let tongue_colour = "#ff0000";
     let tongue = match pet.hunger {

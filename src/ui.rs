@@ -19,6 +19,8 @@ pub struct AnimationWindow {
     pub end_frame_inclusive: u64,
     pub image: String,
     pub colours: Vec<Vec<String>>,
+    pub delta_x_from_center: i16,
+    pub delta_y_from_center: i16,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,12 +52,16 @@ pub async fn draw_animation_in_center_of_box(animation: &Animation) -> CommandRe
         |stdout, curr_cursor_y, box_width, box_height, curr_frame| {
             let mut curr_image: Option<String> = None;
             let mut curr_colours: Option<Vec<Vec<String>>> = None;
+            let mut delta_x_from_center: i16 = 0;
+            let mut delta_y_from_center: i16 = 0;
             for window in animation.windows.clone() {
                 if curr_frame >= window.start_frame_inclusive as usize
                     && curr_frame <= window.end_frame_inclusive as usize
                 {
                     curr_image = Some(window.image);
                     curr_colours = Some(window.colours);
+                    delta_x_from_center = window.delta_x_from_center;
+                    delta_y_from_center = window.delta_y_from_center;
                     break;
                 }
             }
@@ -68,8 +74,12 @@ pub async fn draw_animation_in_center_of_box(animation: &Animation) -> CommandRe
                 pad_image_and_colours(curr_image.unwrap(), curr_colours.unwrap(), None, None);
 
             // Position to draw face
-            let start_x = box_width / 2 - max_width as u16 / 2;
-            let start_y = curr_cursor_y + box_height / 2 - max_height as u16 / 2;
+            let start_x = (box_width / 2)
+                .saturating_sub(max_width as u16 / 2)
+                .saturating_add_signed(delta_x_from_center);
+            let start_y = (curr_cursor_y + box_height / 2)
+                .saturating_sub(max_height as u16 / 2)
+                .saturating_add_signed(delta_y_from_center);
 
             draw_image_starting_at(stdout, &padded_face, &padded_colours, start_x, start_y)
         },
