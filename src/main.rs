@@ -22,7 +22,9 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
-use pet::{CommandIfPetExists, execute_command_if_pet_exists, get_pet_status};
+use pet::{CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status};
+
+use crate::pet::FeedStatus;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -136,7 +138,49 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
         );
     }
 
-    todo!();
+    let feed_result = feed_pet(_user.token.as_str(), config, commits).await?;
+
+    match feed_result.status {
+        FeedStatus::AskForChallenge => {
+            println!("Your pet is asking for a coding challenge! Do you accept (Y/n)?");
+            let mut accepted = false;
+            loop {
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).unwrap();
+                if input.trim() == "Y" {
+                    accepted = true;
+                    break;
+                } else if input.trim() == "n" {
+                    break;
+                }
+                println!("Invalid input! Please enter Y or n");
+            }
+            if accepted {
+                if let Some(text_before_animation) = feed_result.text_before_animation {
+                    println!("{}", text_before_animation);
+                }
+                if let Some(animation) = feed_result.animation {
+                    draw_animation_in_center_of_box(&animation).await?;
+                }
+                todo!();
+            } else {
+                println!("You declined the challenge!");
+            }
+            Ok(())
+        }
+        FeedStatus::TooMuchFood | FeedStatus::FeedSuccess => {
+            if let Some(text_before_animation) = feed_result.text_before_animation {
+                println!("{}", text_before_animation);
+            }
+            if let Some(animation) = feed_result.animation {
+                draw_animation_in_center_of_box(&animation).await?;
+            }
+            if let Some(pet) = feed_result.pet {
+                println!("{}", pet);
+            }
+            Ok(())
+        }
+    }
 }
 
 #[async_trait]

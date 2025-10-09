@@ -1,5 +1,6 @@
 use crate::utils;
 use chrono::DateTime;
+use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::sync::OnceLock;
 
@@ -104,6 +105,7 @@ fn get_git_email() -> Result<String, GitError> {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Commit {
     hash: String,
     time_since_epoch_ms: u64,

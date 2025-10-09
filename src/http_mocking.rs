@@ -1,6 +1,6 @@
-use crate::constants::{DOES_PET_EXIST_PATH, LOGIN_PATH, LOGOUT_PATH, STATUS_PATH};
-use crate::pet::Pet;
+use crate::constants::{DOES_PET_EXIST_PATH, FEED_PATH, LOGIN_PATH, LOGOUT_PATH, STATUS_PATH};
 use crate::pet::StatusAPIResult;
+use crate::pet::{Challenge, FeedAPIResult, FeedStatus, Pet};
 use http::Extensions;
 use reqwest::{Body, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
@@ -85,15 +85,39 @@ impl Middleware for MockingMiddleware {
         } else if path == STATUS_PATH {
             let token = req.headers().get("Authorization");
             if !token.is_none() {
-                let result = StatusAPIResult {
-                    animation: generate_pet_status_animation(),
-                    pet: PET.clone(),
-                };
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
+                    let result = StatusAPIResult {
+                        animation: generate_pet_status_animation(),
+                        pet: PET.clone(),
+                    };
+                    return Ok(http::Response::builder()
+                        .status(200)
+                        .body(Body::from(serde_json::to_string(&result).unwrap()))
+                        .unwrap()
+                        .into());
+                }
+            }
+        } else if path == FEED_PATH {
+            let token = req.headers().get("Authorization");
+            if !token.is_none() {
                 let token = token.unwrap().to_str();
                 if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
                     return Ok(http::Response::builder()
                         .status(200)
-                        .body(Body::from(serde_json::to_string(&result).unwrap()))
+                        .body(Body::from(
+                            serde_json::to_string(&FeedAPIResult {
+                                animation: None,
+                                text_before_animation: None,
+                                status: FeedStatus::AskForChallenge,
+                                challenge: Some(Challenge {
+                                    id: "mock-challenge-id".to_string(),
+                                    description: "You are given an array in which you need to sort all the numbers. Implement this!".to_string(),
+                                }),
+                                pet: None,
+                            })
+                            .unwrap(),
+                        ))
                         .unwrap()
                         .into());
                 }

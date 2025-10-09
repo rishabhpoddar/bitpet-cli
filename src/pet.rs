@@ -1,13 +1,16 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
-use crate::constants::{DOES_PET_EXIST_PATH, STATUS_PATH};
+use crate::constants::{DOES_PET_EXIST_PATH, FEED_PATH, STATUS_PATH};
 use crate::error::CustomErrorTrait;
+use crate::git;
 use crate::http_mocking::MockingMiddleware;
 use crate::ui::Animation;
 use crate::ui::get_pet_display;
 use async_trait::async_trait;
+use serde_json::json;
 
 use crate::auth::{AuthenticatedCommand, execute_authenticated_command};
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -106,6 +109,58 @@ pub async fn get_pet_status(
     if response.status().is_success() {
         let pet: StatusAPIResult = response.json().await?;
         Ok((pet.pet, pet.animation))
+    } else if response.status().as_u16() == 401 {
+        config.user = None;
+        config.save()?;
+        Err(format!("Oops! Please login again!").into())
+    } else {
+        let error_text = response.text().await?;
+        Err(format!("Failed to get pet status: {}", error_text).into())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum FeedStatus {
+    FeedSuccess,
+    TooMuchFood,
+    AskForChallenge,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Challenge {
+    pub id: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FeedAPIResult {
+    pub animation: Option<Animation>,
+    pub status: FeedStatus,
+    pub challenge: Option<Challenge>,
+    pub pet: Option<Pet>,
+    pub text_before_animation: Option<String>,
+}
+
+pub async fn feed_pet(
+    token: &str,
+    config: &mut Config,
+    commits: HashMap<String, Vec<git::Commit>>,
+) -> Result<FeedAPIResult, Box<dyn CustomErrorTrait>> {
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
+    let response = client
+        .post("https://api.bitpet.dev".to_owned() + FEED_PATH)
+        .bearer_auth(token)
+        .body(serde_json::to_string(&json!({
+            "commits": commits
+        }))?)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let api_result: FeedAPIResult = response.json().await?;
+        Ok(api_result)
     } else if response.status().as_u16() == 401 {
         config.user = None;
         config.save()?;
