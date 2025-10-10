@@ -262,7 +262,7 @@ async fn list_repos_impl(config: &mut Config) -> CommandResult {
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     tokio::task::spawn(async {
         ctrlc::set_handler(|| {
