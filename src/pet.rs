@@ -124,6 +124,7 @@ pub enum FeedStatus {
     FeedSuccess,
     TooMuchFood,
     AskForChallenge,
+    NoFood,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -195,12 +196,24 @@ pub async fn feed_pet(
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ChallengeAnswerAPIResult {
+    pub status: ChallengeAnswerStatus,
+    pub feed_result: Option<FeedAPIResult>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ChallengeAnswerStatus {
+    Correct,
+    Incorrect,
+}
+
 pub async fn submit_challenge_answer(
     token: &str,
     config: &mut Config,
     challenge_id: String,
     answer: String,
-) -> Result<FeedAPIResult, Box<dyn CustomErrorTrait>> {
+) -> Result<ChallengeAnswerAPIResult, Box<dyn CustomErrorTrait>> {
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
@@ -215,7 +228,7 @@ pub async fn submit_challenge_answer(
         .await?;
 
     if response.status().is_success() {
-        let api_result: FeedAPIResult = response.json().await?;
+        let api_result: ChallengeAnswerAPIResult = response.json().await?;
         Ok(api_result)
     } else if response.status().as_u16() == 401 {
         config.user = None;

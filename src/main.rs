@@ -177,7 +177,7 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
             }
             Ok(())
         }
-        FeedStatus::TooMuchFood | FeedStatus::FeedSuccess => {
+        _ => {
             if let Some(text_before_animation) = feed_result.text_before_animation {
                 println!("{}", text_before_animation);
             }
@@ -282,10 +282,9 @@ async fn challenge_read_impl(_user: UserInfo, config: &mut Config) -> CommandRes
     if let Some(challenge) = config.challenge.clone() {
         println!("{}", challenge);
     } else {
-        return Err(format!(
-            "No challenge found! Type 'pet feed' and you may get a new challenge!"
-        )
-        .into());
+        println!(
+            "\x1b[31mNo challenge found! Type 'pet feed' and you may get a new challenge!\x1b[0m"
+        );
     }
     Ok(())
 }
@@ -318,17 +317,28 @@ async fn challenge_answer_impl(_user: UserInfo, config: &mut Config) -> CommandR
                 submit_challenge_answer(_user.token.as_str(), config, challenge.id, text).await?
             }
         };
-        if let Some(text_before_animation) = response.text_before_animation {
-            println!("{}", text_before_animation);
-        }
-        if let Some(animation) = response.animation {
-            draw_animation_in_center_of_box(&animation).await?;
-        }
-        if let Some(pet) = response.pet {
-            println!("{}", pet);
+
+        match response.status {
+            pet::ChallengeAnswerStatus::Correct => {
+                let feed_result = response.feed_result.unwrap();
+                if let Some(text_before_animation) = feed_result.text_before_animation {
+                    println!("{}", text_before_animation);
+                }
+                if let Some(animation) = feed_result.animation {
+                    draw_animation_in_center_of_box(&animation).await?;
+                }
+                if let Some(pet) = feed_result.pet {
+                    println!("{}", pet);
+                }
+            }
+            pet::ChallengeAnswerStatus::Incorrect => {
+                println!("\x1b[31mIncorrect answer! Please try again!\x1b[0m");
+            }
         }
     } else {
-        return Err(format!("No challenge found!").into());
+        println!(
+            "\x1b[31mNo challenge found! Type 'pet feed' and you may get a new challenge!\x1b[0m"
+        );
     }
     Ok(())
 }
@@ -346,7 +356,9 @@ async fn challenge_remove_impl(_user: UserInfo, config: &mut Config) -> CommandR
         config.save()?;
         println!("Removed challenge successfully!");
     } else {
-        return Err(format!("No challenge found!").into());
+        println!(
+            "\x1b[31mNo challenge found! Type 'pet feed' and you may get a new challenge!\x1b[0m"
+        );
     }
     Ok(())
 }
