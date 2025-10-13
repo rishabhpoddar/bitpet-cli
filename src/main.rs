@@ -23,7 +23,7 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 use commands::Commands;
 use config::{Config, UserInfo};
 use pet::{
-    CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status,
+    CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status, play_with_pet,
     submit_challenge_answer,
 };
 
@@ -42,8 +42,6 @@ type CommandResult = Result<(), Box<dyn error::CustomErrorTrait>>;
 // Command structs implementing AuthenticatedCommand trait
 struct LogoutCommand;
 struct WhoamiCommand;
-struct NewPetCommand;
-struct RemovePetCommand;
 struct StatusCommand;
 struct FeedCommand;
 struct PlayCommand;
@@ -91,24 +89,6 @@ async fn do_whoami_impl(user: UserInfo, _config: &mut Config) -> CommandResult {
     println!("Email: {}", user.email);
     println!("Username: {}", user.username);
     Ok(())
-}
-
-#[async_trait]
-impl AuthenticatedCommand for NewPetCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        do_new_pet_impl(_user, _config).await
-    }
-}
-
-async fn do_new_pet_impl(_user: UserInfo, _config: &mut Config) -> CommandResult {
-    todo!();
-}
-
-#[async_trait]
-impl CommandIfPetExists for RemovePetCommand {
-    async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        todo!();
-    }
 }
 
 #[async_trait]
@@ -195,7 +175,17 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
 #[async_trait]
 impl CommandIfPetExists for PlayCommand {
     async fn execute(self, _user: UserInfo, _config: &mut Config) -> CommandResult {
-        todo!();
+        let response = play_with_pet(_user.token.as_str(), _config).await?;
+        if let Some(text_before_animation) = response.text_before_animation {
+            println!("{}", text_before_animation);
+        }
+        if let Some(animation) = response.animation {
+            draw_animation_in_center_of_box(&animation).await?;
+        }
+        if let Some(pet) = response.pet {
+            println!("{}", pet);
+        }
+        Ok(())
     }
 }
 
@@ -390,10 +380,6 @@ async fn main() {
         Commands::Login {} => handle_login(&mut config).await,
         Commands::Logout {} => execute_authenticated_command(&mut config, LogoutCommand).await,
         Commands::Whoami {} => execute_authenticated_command(&mut config, WhoamiCommand).await,
-        Commands::NewPet {} => execute_authenticated_command(&mut config, NewPetCommand).await,
-        Commands::RemovePet {} => {
-            execute_command_if_pet_exists(&mut config, RemovePetCommand).await
-        }
         Commands::Status {} => execute_command_if_pet_exists(&mut config, StatusCommand).await,
         Commands::Feed {} => execute_command_if_pet_exists(&mut config, FeedCommand).await,
         Commands::Play {} => execute_command_if_pet_exists(&mut config, PlayCommand).await,

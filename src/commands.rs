@@ -29,14 +29,9 @@ pub enum Commands {
 
     /// Logout from your BitPet account
     Logout {},
+
     /// Get the user information about who is logged in
     Whoami {},
-
-    /// Adopt a new pet if you don't already have one.
-    NewPet {},
-
-    /// Let go of your pet
-    RemovePet {},
 
     /// Challenge related commands
     Challenge {

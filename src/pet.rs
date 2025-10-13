@@ -3,7 +3,9 @@ use std::collections::HashMap;
 
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
-use crate::constants::{CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, STATUS_PATH};
+use crate::constants::{
+    CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, PLAY_PATH, STATUS_PATH,
+};
 use crate::error::CustomErrorTrait;
 use crate::git;
 use crate::http_mocking::MockingMiddleware;
@@ -229,6 +231,46 @@ pub async fn submit_challenge_answer(
 
     if response.status().is_success() {
         let api_result: ChallengeAnswerAPIResult = response.json().await?;
+        Ok(api_result)
+    } else if response.status().as_u16() == 401 {
+        config.user = None;
+        config.save()?;
+        Err(format!("Oops! Please login again!").into())
+    } else {
+        let error_text = response.text().await?;
+        Err(format!("Failed to get pet status: {}", error_text).into())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum PlayStatus {
+    PlaySuccess,
+    TooMuchPlay,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlayAPIResult {
+    pub animation: Option<Animation>,
+    pub status: PlayStatus,
+    pub pet: Option<Pet>,
+    pub text_before_animation: Option<String>,
+}
+
+pub async fn play_with_pet(
+    token: &str,
+    config: &mut Config,
+) -> Result<PlayAPIResult, Box<dyn CustomErrorTrait>> {
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
+    let response = client
+        .post("https://api.bitpet.dev".to_owned() + PLAY_PATH)
+        .bearer_auth(token)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let api_result: PlayAPIResult = response.json().await?;
         Ok(api_result)
     } else if response.status().as_u16() == 401 {
         config.user = None;

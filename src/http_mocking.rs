@@ -1,10 +1,11 @@
 use crate::constants::{
-    CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, LOGIN_PATH, LOGOUT_PATH, STATUS_PATH,
+    CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, LOGIN_PATH, LOGOUT_PATH, PLAY_PATH,
+    STATUS_PATH,
 };
 use crate::pet::StatusAPIResult;
 use crate::pet::{
     Challenge, ChallengeAnswerAPIResult, ChallengeAnswerStatus, ChallengeAnswerType, FeedAPIResult,
-    FeedStatus, Pet,
+    FeedStatus, Pet, PlayAPIResult, PlayStatus,
 };
 use http::Extensions;
 use reqwest::{Body, Request, Response};
@@ -139,6 +140,29 @@ impl Middleware for MockingMiddleware {
                             serde_json::to_string(&ChallengeAnswerAPIResult {
                                 feed_result: None,
                                 status: ChallengeAnswerStatus::Incorrect,
+                            })
+                            .unwrap(),
+                        ))
+                        .unwrap()
+                        .into());
+                }
+            }
+        } else if path == PLAY_PATH {
+            let token = req.headers().get("Authorization");
+            if !token.is_none() {
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
+                    return Ok(http::Response::builder()
+                        .status(200)
+                        .body(Body::from(
+                            serde_json::to_string(&PlayAPIResult {
+                                animation: None,
+                                text_before_animation: Some(format!(
+                                    "{} is in no mood to play right now! Please try later, or consider feeding them instead or just taking a break!", 
+                                    PET.name
+                                )),
+                                status: PlayStatus::TooMuchPlay,
+                                pet: Some(PET.clone()),
                             })
                             .unwrap(),
                         ))
