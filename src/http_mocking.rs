@@ -1,6 +1,6 @@
 use crate::constants::{DOES_PET_EXIST_PATH, FEED_PATH, LOGIN_PATH, LOGOUT_PATH, STATUS_PATH};
 use crate::pet::StatusAPIResult;
-use crate::pet::{Challenge, FeedAPIResult, FeedStatus, Pet};
+use crate::pet::{Challenge, ChallengeAnswerType, FeedAPIResult, FeedStatus, Pet};
 use http::Extensions;
 use reqwest::{Body, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
@@ -112,7 +112,8 @@ impl Middleware for MockingMiddleware {
                                 status: FeedStatus::AskForChallenge,
                                 challenge: Some(Challenge {
                                     id: "mock-challenge-id".to_string(),
-                                    description: "You are given an array in which you need to sort all the numbers. Implement this!".to_string(),
+                                    description: "You are given an array in which you need to sort all the numbers.\nImplement this!".to_string(),
+                                    answer_type: ChallengeAnswerType::Text,
                                 }),
                                 pet: None,
                             })

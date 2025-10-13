@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::CommandResult;
 use crate::config::{Config, UserInfo};
-use crate::constants::{DOES_PET_EXIST_PATH, FEED_PATH, STATUS_PATH};
+use crate::constants::{CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, STATUS_PATH};
 use crate::error::CustomErrorTrait;
 use crate::git;
 use crate::http_mocking::MockingMiddleware;
@@ -126,10 +126,34 @@ pub enum FeedStatus {
     AskForChallenge,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[serde(default)]
 pub struct Challenge {
     pub id: String,
     pub description: String,
+    pub answer_type: ChallengeAnswerType,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ChallengeAnswerType {
+    Text,
+    File,
+}
+
+impl Default for ChallengeAnswerType {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+impl std::fmt::Display for Challenge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "==========\nChallenge ID: {}\n\n\x1b[34m{}\x1b[0m\n==========",
+            self.id, self.description
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -154,6 +178,38 @@ pub async fn feed_pet(
         .bearer_auth(token)
         .body(serde_json::to_string(&json!({
             "commits": commits
+        }))?)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let api_result: FeedAPIResult = response.json().await?;
+        Ok(api_result)
+    } else if response.status().as_u16() == 401 {
+        config.user = None;
+        config.save()?;
+        Err(format!("Oops! Please login again!").into())
+    } else {
+        let error_text = response.text().await?;
+        Err(format!("Failed to get pet status: {}", error_text).into())
+    }
+}
+
+pub async fn submit_challenge_answer(
+    token: &str,
+    config: &mut Config,
+    challenge_id: String,
+    answer: String,
+) -> Result<FeedAPIResult, Box<dyn CustomErrorTrait>> {
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
+    let response = client
+        .post("https://api.bitpet.dev".to_owned() + CHALLENGE_ANS_PATH)
+        .bearer_auth(token)
+        .body(serde_json::to_string(&json!({
+            "challenge_id": challenge_id,
+            "answer": answer
         }))?)
         .send()
         .await?;

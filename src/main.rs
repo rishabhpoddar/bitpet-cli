@@ -22,7 +22,10 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
-use pet::{CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status};
+use pet::{
+    CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status,
+    submit_challenge_answer,
+};
 
 use crate::pet::FeedStatus;
 
@@ -51,6 +54,9 @@ struct RemoveRepoCommand {
     path: String,
 }
 struct ListReposCommand;
+struct ChallengeReadCommand;
+struct ChallengeAnswerCommand;
+struct ChallengeRemoveCommand;
 
 // Command handlers
 
@@ -156,13 +162,16 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
                 println!("Invalid input! Please enter Y or n");
             }
             if accepted {
+                config.challenge = feed_result.challenge.clone();
+                config.save()?;
                 if let Some(text_before_animation) = feed_result.text_before_animation {
                     println!("{}", text_before_animation);
                 }
                 if let Some(animation) = feed_result.animation {
                     draw_animation_in_center_of_box(&animation).await?;
                 }
-                todo!();
+                println!("{}", feed_result.challenge.unwrap());
+                println!("Please answer the challenge by typing 'pet challenge ans'");
             } else {
                 println!("You declined the challenge!");
             }
@@ -262,6 +271,86 @@ async fn list_repos_impl(config: &mut Config) -> CommandResult {
     Ok(())
 }
 
+#[async_trait]
+impl AuthenticatedCommand for ChallengeReadCommand {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+        challenge_read_impl(_user, config).await
+    }
+}
+
+async fn challenge_read_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
+    if let Some(challenge) = config.challenge.clone() {
+        println!("{}", challenge);
+    } else {
+        return Err(format!(
+            "No challenge found! Type 'pet feed' and you may get a new challenge!"
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[async_trait]
+impl AuthenticatedCommand for ChallengeAnswerCommand {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+        challenge_answer_impl(_user, config).await
+    }
+}
+
+async fn challenge_answer_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
+    if let Some(challenge) = config.challenge.clone() {
+        println!("{}", challenge);
+        let response = match challenge.answer_type {
+            pet::ChallengeAnswerType::File => {
+                println!("Please enter the path to the file you want to submit:");
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input)?;
+                let path = input.trim().to_string();
+                let file_content = std::fs::read_to_string(path)?;
+                submit_challenge_answer(_user.token.as_str(), config, challenge.id, file_content)
+                    .await?
+            }
+            pet::ChallengeAnswerType::Text => {
+                println!("Please enter the text you want to submit:");
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input)?;
+                let text = input.trim().to_string();
+                submit_challenge_answer(_user.token.as_str(), config, challenge.id, text).await?
+            }
+        };
+        if let Some(text_before_animation) = response.text_before_animation {
+            println!("{}", text_before_animation);
+        }
+        if let Some(animation) = response.animation {
+            draw_animation_in_center_of_box(&animation).await?;
+        }
+        if let Some(pet) = response.pet {
+            println!("{}", pet);
+        }
+    } else {
+        return Err(format!("No challenge found!").into());
+    }
+    Ok(())
+}
+
+#[async_trait]
+impl AuthenticatedCommand for ChallengeRemoveCommand {
+    async fn execute(self, _user: UserInfo, config: &mut Config) -> CommandResult {
+        challenge_remove_impl(_user, config).await
+    }
+}
+
+async fn challenge_remove_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
+    if let Some(_) = config.challenge.clone() {
+        config.challenge = None;
+        config.save()?;
+        println!("Removed challenge successfully!");
+    } else {
+        return Err(format!("No challenge found!").into());
+    }
+    Ok(())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     tokio::task::spawn(async {
@@ -305,6 +394,17 @@ async fn main() {
         Commands::ListRepos {} => {
             execute_command_if_pet_exists(&mut config, ListReposCommand).await
         }
+        Commands::Challenge { subcommand } => match subcommand {
+            commands::ChallengeSubcommand::Read {} => {
+                execute_authenticated_command(&mut config, ChallengeReadCommand).await
+            }
+            commands::ChallengeSubcommand::Ans {} => {
+                execute_authenticated_command(&mut config, ChallengeAnswerCommand).await
+            }
+            commands::ChallengeSubcommand::Remove {} => {
+                execute_authenticated_command(&mut config, ChallengeRemoveCommand).await
+            }
+        },
     };
 
     // Handle any errors from config operations

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::error;
+use crate::pet::Challenge;
 use crate::utils;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -11,6 +12,7 @@ pub struct Config {
     /// User authentication information
     pub user: Option<UserInfo>,
     pub repos: Vec<String>,
+    pub challenge: Option<Challenge>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

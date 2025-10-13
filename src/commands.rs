@@ -37,4 +37,22 @@ pub enum Commands {
 
     /// Let go of your pet
     RemovePet {},
+
+    /// Challenge related commands
+    Challenge {
+        #[command(subcommand)]
+        subcommand: ChallengeSubcommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ChallengeSubcommand {
+    /// Read the current challenge
+    Read {},
+
+    /// Answer the current challenge
+    Ans {},
+
+    /// Remove the current challenge
+    Remove {},
 }
