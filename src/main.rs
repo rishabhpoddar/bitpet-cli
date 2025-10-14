@@ -126,6 +126,9 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
 
     let feed_result = feed_pet(_user.token.as_str(), config, commits).await?;
 
+    config.challenge = None;
+    config.save()?;
+
     match feed_result.status {
         FeedStatus::AskForChallenge => {
             println!("Your pet is asking for a coding challenge! Do you accept (Y/n)?");
