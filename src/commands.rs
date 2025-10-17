@@ -38,6 +38,8 @@ pub enum Commands {
         #[command(subcommand)]
         subcommand: ChallengeSubcommand,
     },
+
+    Version {},
 }
 
 #[derive(Subcommand, Debug)]

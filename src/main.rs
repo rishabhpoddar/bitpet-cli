@@ -406,6 +406,10 @@ async fn main() {
                 execute_authenticated_command(&mut config, ChallengeRemoveCommand).await
             }
         },
+        Commands::Version {} => {
+            println!("BitPet v{}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
     };
 
     // Handle any errors from config operations
