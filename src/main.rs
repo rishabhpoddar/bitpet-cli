@@ -441,7 +441,7 @@ async fn main() {
             }
         },
         Commands::Version {} => {
-            println!("BitPet v{}", env!("CARGO_PKG_VERSION"));
+            println!("BitPet {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
     };
