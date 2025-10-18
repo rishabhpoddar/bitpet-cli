@@ -161,7 +161,7 @@ async fn feed_impl(_user: UserInfo, config: &mut Config) -> CommandResult {
                 println!("{}", feed_result.challenge.unwrap());
                 println!("Please answer the challenge by typing 'pet challenge ans'");
             } else {
-                println!("You declined the challenge!");
+                println!("You declined a challenge, and did not feed your pet!");
             }
             Ok(())
         }
@@ -370,19 +370,20 @@ async fn check_for_updates(token: Option<&str>) -> () {
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
-    let response = client
+    let mut request = client
         .get("https://api.bitpet.dev".to_owned() + UPDATE_CHECK_PATH)
-        .query(&[("curr_version", env!("CARGO_PKG_VERSION"))])
-        .bearer_auth(token.unwrap_or(""))
-        .send()
-        .await;
+        .query(&[("curr_version", env!("CARGO_PKG_VERSION"))]);
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    let response = request.send().await;
     if response.is_ok() && response.as_ref().unwrap().status().is_success() {
         let api_result = response.unwrap().json::<UpdateCheckAPIResult>().await;
         if api_result.is_ok() {
             let api_result = api_result.unwrap();
             if api_result.update_available {
                 println!(
-                    "\x1b[33mIMPORTANT: A new version of BitPet is available! Please run 'TODO' to update.\x1b[0m"
+                    "\n\x1b[33mIMPORTANT: A new version of BitPet is available! Please run 'TODO' to update.\x1b[0m"
                 );
             }
         }
