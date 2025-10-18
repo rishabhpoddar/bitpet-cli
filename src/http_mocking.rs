@@ -1,6 +1,6 @@
 use crate::constants::{
     CHALLENGE_ANS_PATH, DOES_PET_EXIST_PATH, FEED_PATH, LOGIN_PATH, LOGOUT_PATH, PLAY_PATH,
-    STATUS_PATH,
+    STATUS_PATH, UPDATE_CHECK_PATH,
 };
 use crate::pet::StatusAPIResult;
 use crate::pet::{
@@ -14,6 +14,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::LazyLock;
 
+use crate::UpdateCheckAPIResult;
 use crate::ui::{Animation, AnimationWindow};
 pub struct MockingMiddleware;
 
@@ -163,6 +164,23 @@ impl Middleware for MockingMiddleware {
                                 )),
                                 status: PlayStatus::TooMuchPlay,
                                 pet: Some(PET.clone()),
+                            })
+                            .unwrap(),
+                        ))
+                        .unwrap()
+                        .into());
+                }
+            }
+        } else if path == UPDATE_CHECK_PATH {
+            let token = req.headers().get("Authorization");
+            if !token.is_none() {
+                let token = token.unwrap().to_str();
+                if token.is_ok() && token.unwrap() == "Bearer ".to_owned() + MOCK_TOKEN {
+                    return Ok(http::Response::builder()
+                        .status(200)
+                        .body(Body::from(
+                            serde_json::to_string(&UpdateCheckAPIResult {
+                                update_available: true,
                             })
                             .unwrap(),
                         ))

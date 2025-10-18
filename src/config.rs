@@ -13,6 +13,7 @@ pub struct Config {
     pub user: Option<UserInfo>,
     pub repos: Vec<String>,
     pub challenge: Option<Challenge>,
+    pub last_update_check_time_ms: u128,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

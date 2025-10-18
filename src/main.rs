@@ -12,7 +12,11 @@ mod ui;
 mod utils;
 use ui::{draw_animation_in_center_of_box, final_cleanup_for_terminal};
 extern crate ctrlc;
+extern crate reqwest;
+extern crate reqwest_middleware;
+use crate::http_mocking::MockingMiddleware;
 
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use std::collections::HashMap;
@@ -22,6 +26,7 @@ use auth::{AuthenticatedCommand, do_login, do_logout, execute_authenticated_comm
 
 use commands::Commands;
 use config::{Config, UserInfo};
+use constants::UPDATE_CHECK_PATH;
 use pet::{
     CommandIfPetExists, execute_command_if_pet_exists, feed_pet, get_pet_status, play_with_pet,
     submit_challenge_answer,
@@ -356,6 +361,34 @@ async fn challenge_remove_impl(_user: UserInfo, config: &mut Config) -> CommandR
     Ok(())
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct UpdateCheckAPIResult {
+    pub update_available: bool,
+}
+
+async fn check_for_updates(token: Option<&str>) -> () {
+    let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
+        .with(MockingMiddleware)
+        .build();
+    let response = client
+        .get("https://api.bitpet.dev".to_owned() + UPDATE_CHECK_PATH)
+        .query(&[("curr_version", env!("CARGO_PKG_VERSION"))])
+        .bearer_auth(token.unwrap_or(""))
+        .send()
+        .await;
+    if response.is_ok() && response.as_ref().unwrap().status().is_success() {
+        let api_result = response.unwrap().json::<UpdateCheckAPIResult>().await;
+        if api_result.is_ok() {
+            let api_result = api_result.unwrap();
+            if api_result.update_available {
+                println!(
+                    "\x1b[33mIMPORTANT: A new version of BitPet is available! Please run 'TODO' to update.\x1b[0m"
+                );
+            }
+        }
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     tokio::task::spawn(async {
@@ -416,5 +449,23 @@ async fn main() {
     if let Err(e) = result {
         utils::print_error_chain(e);
         std::process::exit(1);
+    }
+
+    if config.last_update_check_time_ms + (1000 * 60 * 60 * 24)
+        < std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    {
+        let token: Option<&str> = match config.user {
+            Some(ref user) => Some(&user.token),
+            None => None,
+        };
+        check_for_updates(token).await;
+        config.last_update_check_time_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let _ = config.save();
     }
 }
