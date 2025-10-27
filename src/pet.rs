@@ -11,6 +11,7 @@ use crate::git;
 use crate::http_mocking::MockingMiddleware;
 use crate::ui::Animation;
 use crate::ui::get_pet_display;
+use crate::utils;
 use async_trait::async_trait;
 use serde_json::json;
 
@@ -70,7 +71,7 @@ async fn does_pet_exist(
         .with(MockingMiddleware)
         .build();
     let response = client
-        .get("https://api.bitpet.dev".to_owned() + DOES_PET_EXIST_PATH)
+        .get(utils::get_api_base_url() + DOES_PET_EXIST_PATH)
         .bearer_auth(token)
         .send()
         .await?;
@@ -103,7 +104,7 @@ pub async fn get_pet_status(
         .with(MockingMiddleware)
         .build();
     let response = client
-        .get("https://api.bitpet.dev".to_owned() + STATUS_PATH)
+        .get(utils::get_api_base_url() + STATUS_PATH)
         .bearer_auth(token)
         .send()
         .await?;
@@ -177,7 +178,7 @@ pub async fn feed_pet(
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev".to_owned() + FEED_PATH)
+        .post(utils::get_api_base_url() + FEED_PATH)
         .bearer_auth(token)
         .body(serde_json::to_string(&json!({
             "commits": commits
@@ -220,7 +221,7 @@ pub async fn submit_challenge_answer(
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev".to_owned() + CHALLENGE_ANS_PATH)
+        .post(utils::get_api_base_url() + CHALLENGE_ANS_PATH)
         .bearer_auth(token)
         .body(serde_json::to_string(&json!({
             "challenge_id": challenge_id,
@@ -264,7 +265,7 @@ pub async fn play_with_pet(
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev".to_owned() + PLAY_PATH)
+        .post(utils::get_api_base_url() + PLAY_PATH)
         .bearer_auth(token)
         .send()
         .await?;

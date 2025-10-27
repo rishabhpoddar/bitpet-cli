@@ -137,6 +137,18 @@ impl NormalisedGitPath {
     }
 }
 
+/// Get the API base URL from environment variables
+/// Returns "http://localhost:3001" for dev builds, otherwise "https://api.bitpet.dev"
+pub fn get_api_base_url() -> String {
+    env::var("BITPET_API_URL").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "http://localhost:3001".to_string()
+        } else {
+            "https://api.bitpet.dev".to_string()
+        }
+    })
+}
+
 /// Print an error and its full chain of causes
 
 pub fn print_error_chain(error: Box<dyn error::CustomErrorTrait>) {

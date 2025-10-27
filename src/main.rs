@@ -371,7 +371,7 @@ async fn check_for_updates(token: Option<&str>) -> () {
         .with(MockingMiddleware)
         .build();
     let mut request = client
-        .get("https://api.bitpet.dev".to_owned() + UPDATE_CHECK_PATH)
+        .get(utils::get_api_base_url() + UPDATE_CHECK_PATH)
         .query(&[("curr_version", env!("CARGO_PKG_VERSION"))]);
     if let Some(token) = token {
         request = request.bearer_auth(token);

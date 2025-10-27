@@ -2,6 +2,7 @@ use crate::CommandResult;
 use crate::config::{Config, UserInfo};
 use crate::constants::{LOGIN_PATH, LOGOUT_PATH};
 use crate::error;
+use crate::utils;
 
 use crate::http_mocking::MockingMiddleware;
 use async_trait::async_trait;
@@ -76,7 +77,7 @@ pub async fn do_logout(user: UserInfo, config: &mut Config) -> CommandResult {
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev".to_owned() + LOGOUT_PATH)
+        .post(utils::get_api_base_url() + LOGOUT_PATH)
         .bearer_auth(user.token)
         .send()
         .await?;
@@ -121,7 +122,7 @@ pub async fn do_login(config: &mut Config) -> CommandResult {
         .with(MockingMiddleware)
         .build();
     let response = client
-        .post("https://api.bitpet.dev".to_owned() + LOGIN_PATH)
+        .post(utils::get_api_base_url() + LOGIN_PATH)
         .body(serde_json::to_string(&json!({
             "url_code": random_string,
             "user_code": code
