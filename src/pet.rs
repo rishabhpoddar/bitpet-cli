@@ -180,6 +180,7 @@ pub async fn feed_pet(
     let response = client
         .post(utils::get_api_base_url() + FEED_PATH)
         .bearer_auth(token)
+        .header("Content-Type", "application/json")
         .body(serde_json::to_string(&json!({
             "commits": commits
         }))?)
@@ -223,6 +224,7 @@ pub async fn submit_challenge_answer(
     let response = client
         .post(utils::get_api_base_url() + CHALLENGE_ANS_PATH)
         .bearer_auth(token)
+        .header("Content-Type", "application/json")
         .body(serde_json::to_string(&json!({
             "challenge_id": challenge_id,
             "answer": answer

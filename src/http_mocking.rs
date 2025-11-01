@@ -20,7 +20,7 @@ pub struct MockingMiddleware;
 
 #[derive(Deserialize, Debug)]
 struct LoginRequest {
-    user_code: String,
+    otp: String,
 }
 
 const MOCK_TOKEN: &str = "mock-token";
@@ -51,7 +51,7 @@ impl Middleware for MockingMiddleware {
         if path == LOGIN_PATH {
             let body = req.body().unwrap().as_bytes().unwrap();
             let login_request: LoginRequest = serde_json::from_slice(body).unwrap();
-            if login_request.user_code == MOCK_OTP {
+            if login_request.otp == MOCK_OTP {
                 return Ok(http::Response::builder()
                     .status(200)
                     .body(Body::from(

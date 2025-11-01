@@ -100,16 +100,10 @@ pub async fn do_login(config: &mut Config) -> CommandResult {
     let random_string: String = iter::repeat_with(one_char).take(30).collect();
 
     println!(
-        "Open the following URL in your browser: https://bitpet.dev/login?code={}",
+        "Open the following URL in your browser: {}/auth/github?code={}",
+        utils::get_api_base_url(),
         random_string
     );
-    println!("\nOR\n\nPress Enter to auto-open in your browser...");
-
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-    if input.trim() == "" {
-        open::that(format!("https://bitpet.dev/login?code={}", random_string)).unwrap();
-    }
 
     print!("Once you login, you will see a code on your browser. Enter it here: ");
     std::io::stdout().flush().unwrap();
@@ -123,9 +117,10 @@ pub async fn do_login(config: &mut Config) -> CommandResult {
         .build();
     let response = client
         .post(utils::get_api_base_url() + LOGIN_PATH)
+        .header("Content-Type", "application/json")
         .body(serde_json::to_string(&json!({
-            "url_code": random_string,
-            "user_code": code
+            "code": random_string,
+            "otp": code
         }))?)
         .send()
         .await?;
