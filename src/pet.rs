@@ -52,7 +52,7 @@ pub async fn execute_command_if_pet_exists(
             let does_exist = does_pet_exist(user.token.as_str(), config).await?;
             if !does_exist {
                 return Err(format!(
-                    "You do not yet have a pet! Please use the 'pet new-pet' command to create one."
+                    "You have not yet created a pet! Please visit https://bitpet.dev/dashboard to create one."
                 )
                 .into());
             } else {
