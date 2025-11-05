@@ -6,7 +6,7 @@ CLI tool to create and manage your BitPet (https://bitpet.dev), written in Rust.
 
 ### Prerequisites
 - Rust (latest stable version)
-- Cargo (comes with Rust)
+- Cargo (comes with Rust..)
 
 ### Quick Setup
 
