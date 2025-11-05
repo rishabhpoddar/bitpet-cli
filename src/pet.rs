@@ -1,3 +1,4 @@
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -177,12 +178,14 @@ pub async fn feed_pet(
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
+    let timezone_offset = Local::now().offset().to_string();
     let response = client
         .post(utils::get_api_base_url() + FEED_PATH)
         .bearer_auth(token)
         .header("Content-Type", "application/json")
         .body(serde_json::to_string(&json!({
-            "commits": commits
+            "commits": commits,
+            "timezone_offset": timezone_offset
         }))?)
         .send()
         .await?;
