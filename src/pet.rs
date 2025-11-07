@@ -101,12 +101,14 @@ pub async fn get_pet_status(
     token: &str,
     config: &mut Config,
 ) -> Result<(Pet, Animation), Box<dyn CustomErrorTrait>> {
+    let timezone_offset = Local::now().offset().to_string();
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
     let response = client
         .get(utils::get_api_base_url() + STATUS_PATH)
         .bearer_auth(token)
+        .query(&[("timezone_offset", timezone_offset)])
         .send()
         .await?;
 
