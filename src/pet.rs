@@ -268,12 +268,17 @@ pub async fn play_with_pet(
     token: &str,
     config: &mut Config,
 ) -> Result<PlayAPIResult, Box<dyn CustomErrorTrait>> {
+    let timezone_offset = Local::now().offset().to_string();
     let client = reqwest_middleware::ClientBuilder::new(reqwest::Client::new())
         .with(MockingMiddleware)
         .build();
     let response = client
         .post(utils::get_api_base_url() + PLAY_PATH)
         .bearer_auth(token)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(&json!({
+            "timezone_offset": timezone_offset
+        }))?)
         .send()
         .await?;
 
