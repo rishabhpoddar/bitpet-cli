@@ -358,16 +358,16 @@ pub fn get_pet_display(pet: &pet::Pet) -> String {
 
 fn get_hunger_color(hunger: f64) -> String {
     match hunger {
-        0.0..=30.0 => format!("{}", hunger.to_string().green()),
-        31.0..=75.0 => format!("{}", hunger.to_string().yellow()),
-        _ => format!("{}", hunger.to_string().red()),
+        0.0..=30.0 => format!("{:.1}", hunger).green().to_string(),
+        31.0..=75.0 => format!("{:.1}", hunger).yellow().to_string(),
+        _ => format!("{:.1}", hunger).red().to_string(),
     }
 }
 
 fn get_happiness_color(happiness: f64) -> String {
     match happiness {
-        0.0..=30.0 => format!("{}", happiness.to_string().red()),
-        31.0..=75.0 => format!("{}", happiness.to_string().yellow()),
-        _ => format!("{}", happiness.to_string().green()),
+        0.0..=30.0 => format!("{:.1}", happiness).red().to_string(),
+        31.0..=75.0 => format!("{:.1}", happiness).yellow().to_string(),
+        _ => format!("{:.1}", happiness).green().to_string(),
     }
 }
