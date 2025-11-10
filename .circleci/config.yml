@@ -1,16 +1,11 @@
 version: 2.1
-
-# Reusable commands
 commands:
   package_and_checksum:
     description: "Package built binary into tar.gz and generate sha256"
     parameters:
-      crate_name:
-        type: string
-      target:
-        type: string
-      out_name:
-        type: string
+      crate_name: { type: string }
+      target: { type: string }
+      out_name: { type: string }
     steps:
       - run:
           name: Package << parameters.out_name >>
@@ -30,10 +25,6 @@ commands:
             tar -C stage -czf "release/${OUT}.tar.gz" "${CRATE}"
             (cd release && shasum -a 256 "${OUT}.tar.gz" > "${OUT}.tar.gz.sha256")
             rm -rf stage
-      - persist_to_workspace:
-          root: .
-          paths:
-            - release
 
 jobs:
   build-linux:
@@ -45,27 +36,26 @@ jobs:
       OUT_NAME: pet-linux-x86_64
     steps:
       - checkout
-      - run:
-          name: Add target
-          command: rustup target add "$TARGET"
-      - run:
-          name: Build (Linux)
-          command: cargo build --release --target "$TARGET"
+      - run: rustup target add "$TARGET"
+      - run: cargo build --release --target "$TARGET"
       - package_and_checksum:
           crate_name: pet
           target: x86_64-unknown-linux-gnu
           out_name: pet-linux-x86_64
+      - persist_to_workspace:
+          root: .
+          paths:
+            - release
 
   build-macos:
     macos:
-      xcode: "15.4.0"   # any modern image is fine; we only use it to get a macOS runner
+      xcode: "15.4.0"
     environment:
       CRATE_NAME: pet
       TARGET: x86_64-apple-darwin
       OUT_NAME: pet-macos-x86_64
       RUSTUP_HOME: /Users/distiller/.rustup
       CARGO_HOME: /Users/distiller/.cargo
-      # NOTE: Circle macOS images have Homebrew; we install rustup toolchain ourselves.
     steps:
       - checkout
       - run:
@@ -88,68 +78,64 @@ jobs:
           crate_name: pet
           target: x86_64-apple-darwin
           out_name: pet-macos-x86_64
+      - persist_to_workspace:
+          root: .
+          paths:
+            - release
 
   publish-release:
     docker:
       - image: cimg/base:stable
     environment:
-      GH_TOKEN: ${GITHUB_TOKEN}   # set in CircleCI project settings
+      GH_TOKEN: ${GITHUB_TOKEN}
     steps:
       - checkout
-      - attach_workspace:
-          at: .
+      - attach_workspace: { at: . }
       - run:
           name: Install GitHub CLI
           command: |
             set -euxo pipefail
-            type -p gh >/dev/null || (
+            if ! command -v gh >/dev/null; then
               curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
               sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
               sudo apt-get update -y
               sudo apt-get install -y gh
-            )
+            fi
       - run:
-          name: Create (if missing) and upload assets to GitHub Release
+          name: Create/Update GitHub Release and upload assets
           command: |
             set -euxo pipefail
+            : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
             TAG="${CIRCLE_TAG}"
-            test -n "$TAG"
-
-            # Ensure we are acting on the right repo (owner/name)
             REPO="$(git config --get remote.origin.url | sed -E 's#.*github.com[:/](.+)\.git#\1#')"
 
-            # Create release if not exists
+            # ensure release exists
             if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
               gh release create "$TAG" --repo "$REPO" -t "$TAG" -n "Release $TAG"
             fi
 
-            # Upload all artifacts from both build jobs
             gh release upload "$TAG" release/* --clobber --repo "$REPO"
 
 workflows:
   version: 2
   release-on-tag:
-    when: on_success
     jobs:
       - build-linux:
           filters:
-            branches:
-              ignore: /.*/
+            branches: { ignore: /.*/ }
             tags:
-              only: /^v\d+\.\d+\.\d+(-\S+)?$/
+              only: "^v\\d+\\.\\d+\\.\\d+(-\\S+)?$"
       - build-macos:
           filters:
-            branches:
-              ignore: /.*/
+            branches: { ignore: /.*/ }
             tags:
-              only: /^v\d+\.\d+\.\d+(-\S+)?$/
+              only: "^v\\d+\\.\\d+\\.\\d+(-\\S+)?$"
       - publish-release:
           requires:
             - build-linux
             - build-macos
           filters:
-            branches:
-              ignore: /.*/
+            branches: { ignore: /.*/ }
             tags:
-              only: /^v\d+\.\d+\.\d+(-\S+)?$/
+              only: "^v\\d+\\.\\d+\\.\\d+(-\\S+)?$"
