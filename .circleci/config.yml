@@ -44,7 +44,7 @@ jobs:
           root: .
           paths: [release]
 
-  build-macos:
+  build-macos-x86_64:
     macos:
       xcode: "15.4.0"
     environment:
@@ -67,7 +67,7 @@ jobs:
             rustup default stable
             rustup target add "$TARGET"
       - run:
-          name: Build (macOS)
+          name: Build (macOS x86_64)
           command: |
             source $BASH_ENV
             cargo build --release --target "$TARGET"
@@ -75,6 +75,41 @@ jobs:
           crate_name: pet
           target: x86_64-apple-darwin
           out_name: pet-macos-x86_64
+      - persist_to_workspace:
+          root: .
+          paths: [release]
+
+  build-macos-arm64:
+    macos:
+      xcode: "15.4.0"
+    environment:
+      CRATE_NAME: pet
+      TARGET: aarch64-apple-darwin
+      OUT_NAME: pet-macos-arm64
+      RUSTUP_HOME: /Users/distiller/.rustup
+      CARGO_HOME: /Users/distiller/.cargo
+    steps:
+      - checkout
+      - run:
+          name: Install Rust (rustup)
+          command: |
+            set -euxo pipefail
+            if ! command -v rustup >/dev/null; then
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+              echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
+            fi
+            source $BASH_ENV
+            rustup default stable
+            rustup target add "$TARGET"
+      - run:
+          name: Build (macOS ARM64)
+          command: |
+            source $BASH_ENV
+            cargo build --release --target "$TARGET"
+      - package_and_checksum:
+          crate_name: pet
+          target: aarch64-apple-darwin
+          out_name: pet-macos-arm64
       - persist_to_workspace:
           root: .
           paths: [release]
@@ -90,8 +125,7 @@ jobs:
           command: |
             set -euo pipefail
             : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
-            : "${GITHUB_TOKEN:?GITHUB_TOKEN not set}"   # fails fast if project var missing
-            # show only presence/length (CircleCI may mask value)
+            : "${GITHUB_TOKEN:?GITHUB_TOKEN not set}"
             echo "GITHUB_TOKEN present; length=${#GITHUB_TOKEN}"
       - run:
           name: Create/Update GitHub Release and upload assets (quiet & robust)
@@ -104,14 +138,12 @@ jobs:
             REPO_SLUG="rishabhpoddar/bitpet-cli"
             TAG="${CIRCLE_TAG}"
 
-            # deps
             if ! command -v jq >/dev/null; then
               sudo apt-get update -y
               sudo apt-get install -y jq >/dev/null
             fi
 
             api_json() {
-              # $1 = method, $2 = url, rest = curl args
               curl -sS -X "$1" \
                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
@@ -119,14 +151,12 @@ jobs:
             }
 
             api_status() {
-              # like api_json but returns status code
               curl -sS -o /dev/null -w "%{http_code}" -X "$1" \
                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
                 "$2" "${@:3}"
             }
 
-            # 1) get or create release (suppress 404 noise, handle both cases)
             GET_URL="https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG}"
             code=$(api_status GET "$GET_URL")
             if [ "$code" = "200" ]; then
@@ -148,7 +178,6 @@ jobs:
             fi
             echo "Release id: $RELEASE_ID"
 
-            # helper to remove an existing asset by name (to avoid 422 on re-upload)
             delete_asset_if_exists() {
               local name="$1"
               ASSETS_URL="https://api.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?per_page=100"
@@ -164,7 +193,6 @@ jobs:
               fi
             }
 
-            # 2) upload all artifacts from ./release
             UPLOAD_BASE="https://uploads.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?name="
             shopt -s nullglob
             for f in release/*; do
@@ -192,12 +220,19 @@ workflows:
           filters:
             branches: { ignore: /.*/ }
             tags: { only: /.*/ }
-      - build-macos:
+      - build-macos-x86_64:
+          filters:
+            branches: { ignore: /.*/ }
+            tags: { only: /.*/ }
+      - build-macos-arm64:
           filters:
             branches: { ignore: /.*/ }
             tags: { only: /.*/ }
       - publish-release:
-          requires: [build-linux, build-macos]
+          requires:
+            - build-linux
+            - build-macos-x86_64
+            - build-macos-arm64
           filters:
             branches: { ignore: /.*/ }
             tags: { only: /.*/ }
