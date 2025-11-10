@@ -383,7 +383,7 @@ async fn check_for_updates(token: Option<&str>) -> () {
             let api_result = api_result.unwrap();
             if api_result.update_available {
                 println!(
-                    "\n\x1b[33mIMPORTANT: A new version of BitPet is available! Please run 'TODO' to update.\x1b[0m"
+                    "\n\x1b[33mIMPORTANT: A new version of BitPet is available! Please rerun the installation command shown on our website (it will override the existing installation): https://bitpet.dev\x1b[0m"
                 );
             }
         }
