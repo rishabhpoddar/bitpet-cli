@@ -27,7 +27,7 @@ commands:
 jobs:
   build-linux:
     docker:
-      - image: cimg/rust:stable
+      - image: cimg/rust:1.91.0
     environment:
       CRATE_NAME: pet
       TARGET: x86_64-unknown-linux-gnu
