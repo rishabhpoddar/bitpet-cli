@@ -1,14 +1,8 @@
 # .travis.yml
 language: rust
-rust:
-  - stable
+rust: [stable]
+os: [linux, osx]
 
-# Two jobs: Linux and macOS
-os:
-  - linux
-  - osx
-
-# Build matrix: native targets per OS
 env:
   global:
     - CRATE_NAME=pet
@@ -16,12 +10,12 @@ env:
     - TARGET=x86_64-unknown-linux-gnu
     - TARGET=x86_64-apple-darwin
 
-# Faster CI (optional)
-cache: cargo
-
-before_install:
-  # Ensure rustup present (Travis images usually have it)
-  - rustup --version
+# ✅ Make sure tags trigger builds
+branches:
+  only:
+    - main
+    - master
+    - /^v\d+\.\d+\.\d+(-\S+)?$/   # v1.2.3 or v1.2.3-rc1
 
 install:
   - rustup target add $TARGET
@@ -37,7 +31,7 @@ deploy:
   api_key: "$GITHUB_TOKEN"
   file_glob: true
   file: "release/*"
-  skip_cleanup: true
   draft: false
+  skip_cleanup: true   # (legacy key; fine here)
   on:
     tags: true
