@@ -82,36 +82,29 @@ jobs:
   publish-release:
     docker:
       - image: cimg/base:stable
-    environment:
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      REPO_SLUG: rishabhpoddar/bitpet-cli   # set explicitly to avoid URL parsing issues
     steps:
       - checkout
       - attach_workspace: { at: . }
-
+      - run:
+          name: Sanity check token
+          command: |
+            set -euo pipefail
+            : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
+            : "${GITHUB_TOKEN:?GITHUB_TOKEN not set}"   # fails fast if project var missing
+            # show only presence/length (CircleCI may mask value)
+            echo "GITHUB_TOKEN present; length=${#GITHUB_TOKEN}"
       - run:
           name: Create/Update GitHub Release and upload assets (REST API)
           command: |
             set -euo pipefail
-            : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
-            : "${GITHUB_TOKEN:?GITHUB_TOKEN not set}"
-
             REPO_SLUG="rishabhpoddar/bitpet-cli"
             TAG="${CIRCLE_TAG}"
 
-            # 0) Prove the token is PRESENT and valid (mask value; show length only)
-            echo "Token length: ${#GITHUB_TOKEN}"
-            if [ ${#GITHUB_TOKEN} -lt 20 ]; then
-              echo "FATAL: GITHUB_TOKEN looks empty/short. Check CircleCI Project Settings → Environment Variables." >&2
-              exit 1
-            fi
-
-            # 1) Prove GitHub accepts it (try BOTH schemes; either should work)
+            # prove GitHub accepts it (Bearer first, then token fallback)
             curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null \
-              || curl -sSf -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null \
-              || { echo "FATAL: GitHub rejected the token (401). Ensure it's a CLASSIC PAT with repo scope." >&2; exit 1; }
+              || curl -sSf -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null
 
-            # 2) Get or create the release (Bearer scheme)
+            # get or create release
             if ! curl -fsS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                   "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG}" \
                   -o release.json; then
@@ -123,9 +116,9 @@ jobs:
             fi
 
             RELEASE_ID=$(jq -r '.id' < release.json)
-            test "$RELEASE_ID" != "null" -a -n "$RELEASE_ID" || { echo "FATAL: Could not get release id"; cat release.json; exit 1; }
+            test "$RELEASE_ID" != "null" -a -n "$RELEASE_ID"
 
-            # 3) Upload assets
+            # upload assets
             for f in release/*; do
               [ -f "$f" ] || continue
               NAME=$(basename "$f")
