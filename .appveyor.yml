@@ -1,0 +1,66 @@
+# .appveyor.yml
+version: '{build}'
+image: Visual Studio 2022
+
+environment:
+  CRATE_NAME: pet
+  matrix:
+    - TARGET: x86_64-pc-windows-msvc
+    - TARGET: aarch64-pc-windows-msvc
+  GITHUB_TOKEN:
+    secure: # put your encrypted token here via AppVeyor UI, or set as a project secret
+
+init:
+  - cmd: ver
+
+install:
+  # Install Rustup
+  - ps: |
+      $ErrorActionPreference = 'Stop'
+      Invoke-WebRequest https://win.rustup.rs/x86_64 -OutFile rustup-init.exe
+      Start-Process -FilePath .\rustup-init.exe -ArgumentList "-y" -Wait
+      refreshenv
+      rustup default stable
+      rustup target add %TARGET%
+
+build_script:
+  - cmd: cargo build --release --target %TARGET%
+
+after_build:
+  - ps: |
+      $ErrorActionPreference = 'Stop'
+      New-Item -ItemType Directory -Force -Path release | Out-Null
+      $crate = $env:CRATE_NAME
+      $target = $env:TARGET
+
+      if ($target -eq "x86_64-pc-windows-msvc") { $out = "$crate-windows-x86_64.exe" }
+      elseif ($target -eq "aarch64-pc-windows-msvc") { $out = "$crate-windows-arm64.exe" }
+      else { throw "Unknown target $target" }
+
+      $bin = "target\$target\release\$crate.exe"
+      if (!(Test-Path $bin)) { throw "Binary not found: $bin" }
+
+      $stage = New-Item -ItemType Directory -Force -Path (New-TemporaryFile).Directory
+      Copy-Item $bin "$stage\$crate.exe"
+
+      $zip = "release\$out.zip"
+      Add-Type -AssemblyName 'System.IO.Compression.FileSystem'
+      [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
+
+      $sha = (Get-FileHash -Algorithm SHA256 $zip).Hash
+      "$([IO.Path]::GetFileName($zip)) $sha" | Out-File "$zip.sha256" -Encoding ascii
+
+artifacts:
+  - path: release\*.zip
+    name: release
+  - path: release\*.sha256
+    name: release
+
+deploy:
+  - provider: GitHub
+    artifact: release
+    auth_token: $(GITHUB_TOKEN)
+    draft: false
+    force_update: true
+    on:
+      appveyor_repo_tag: true
