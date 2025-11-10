@@ -21,3 +21,8 @@ CLI tool to create and manage your BitPet (https://bitpet.dev).
    ```bash
    cargo run -- --help   # Run with arguments
    ```
+
+## Release new version
+- Update version in `Cargo.toml`
+- Push to the `main` branch
+- Add a new tag that corresponds to the new version with a `v` prefix. For example, if the new version is `0.1.0`, the tag should be `v0.1.0`. This will run a circleci workflow that will build the binary and release it to the GitHub Releases page.
