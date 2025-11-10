@@ -17,31 +17,31 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             ext: ""
-            out: bitpet-macos-arm64
+            out: pet-macos-arm64
           - os: macos-latest
             target: x86_64-apple-darwin
             ext: ""
-            out: bitpet-macos-x86_64
+            out: pet-macos-x86_64
 
           # Linux (static MUSL = portable)
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             ext: ""
-            out: bitpet-linux-x86_64
+            out: pet-linux-x86_64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
             ext: ""
-            out: bitpet-linux-arm64
+            out: pet-linux-arm64
 
           # Windows
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ext: ".exe"
-            out: bitpet-windows-x86_64.exe
+            out: pet-windows-x86_64.exe
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             ext: ".exe"
-            out: bitpet-windows-arm64.exe
+            out: pet-windows-arm64.exe
 
     steps:
       - name: Checkout
@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          BIN_PATH=target/${{ matrix.target }}/release/bitpet${{ matrix.ext }}
+          BIN_PATH=target/${{ matrix.target }}/release/pet${{ matrix.ext }}
           cp "$BIN_PATH" "dist/${{ matrix.out }}"
           # set exec bit for unixy targets
           if [[ "${{ matrix.ext }}" == "" ]]; then chmod +x "dist/${{ matrix.out }}"; fi
