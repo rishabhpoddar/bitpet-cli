@@ -1,6 +1,6 @@
 # BitPet CLI
 
-CLI tool to create and manage your BitPet (https://bitpet.dev), written in Rust.
+CLI tool to create and manage your BitPet (https://bitpet.dev).
 
 ## Development Environment
 
