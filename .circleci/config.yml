@@ -83,34 +83,56 @@ jobs:
     docker:
       - image: cimg/base:stable
     environment:
-      GITHUB_TOKEN: ${GITHUB_TOKEN}   # keep this
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      REPO_SLUG: rishabhpoddar/bitpet-cli   # set explicitly to avoid URL parsing issues
     steps:
       - checkout
       - attach_workspace: { at: . }
+
       - run:
-          name: Install GitHub CLI
+          name: Create release if missing (GitHub REST)
           command: |
-            set -euxo pipefail
-            if ! command -v gh >/dev/null; then
-              curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-              sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-              sudo apt-get update -y
-              sudo apt-get install -y gh
-            fi
-      - run:
-          name: Create/Update GitHub Release and upload assets
-          command: |
-            set -euxo pipefail
+            set -euo pipefail
             : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
-            TAG="${CIRCLE_TAG}"
-            REPO="$(git config --get remote.origin.url | sed -E 's#.*github.com[:/](.+)\.git#\1#')"
+            # (Optional) quick token sanity check:
+            curl -sSf -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null
 
-            if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-              gh release create "$TAG" --repo "$REPO" -t "$TAG" -n "Release $TAG"
+            # Try to fetch release by tag
+            if ! curl -fsS -H "Authorization: token ${GITHUB_TOKEN}" \
+                "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${CIRCLE_TAG}" \
+                -o release.json; then
+              # Create it if not present
+              curl -fsS -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "{\"tag_name\":\"${CIRCLE_TAG}\",\"name\":\"${CIRCLE_TAG}\",\"body\":\"Release ${CIRCLE_TAG}\"}" \
+                "https://api.github.com/repos/${REPO_SLUG}/releases" \
+                -o release.json
             fi
 
-            gh release upload "$TAG" release/* --clobber --repo "$REPO"
+            # Extract release ID
+            RELEASE_ID=$(jq -r '.id' < release.json)
+            test "$RELEASE_ID" != "null" -a -n "$RELEASE_ID"
+
+      - run:
+          name: Upload artifacts
+          command: |
+            set -euo pipefail
+            : "${CIRCLE_TAG:?}"
+            : "${REPO_SLUG:?}"
+            : "${GITHUB_TOKEN:?}"
+
+            RELEASE_ID=$(jq -r '.id' < release.json)
+            for f in release/*; do
+              [ -f "$f" ] || continue
+              NAME=$(basename "$f")
+              echo "Uploading $NAME"
+              curl -fsS -X POST \
+                -H "Authorization: token ${GITHUB_TOKEN}" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$f" \
+                "https://uploads.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?name=${NAME}" \
+                >/dev/null
+            done
 
 workflows:
   version: 2
