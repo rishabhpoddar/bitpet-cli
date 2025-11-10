@@ -94,42 +94,95 @@ jobs:
             # show only presence/length (CircleCI may mask value)
             echo "GITHUB_TOKEN present; length=${#GITHUB_TOKEN}"
       - run:
-          name: Create/Update GitHub Release and upload assets (REST API)
+          name: Create/Update GitHub Release and upload assets (quiet & robust)
           command: |
             set -euo pipefail
+
+            : "${CIRCLE_TAG:?CIRCLE_TAG not set}"
+            : "${GITHUB_TOKEN:?GITHUB_TOKEN not set}"
+
             REPO_SLUG="rishabhpoddar/bitpet-cli"
             TAG="${CIRCLE_TAG}"
 
-            # prove GitHub accepts it (Bearer first, then token fallback)
-            curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null \
-              || curl -sSf -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user >/dev/null
-
-            # get or create release
-            if ! curl -fsS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                  "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG}" \
-                  -o release.json; then
-              curl -fsS -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                -H "Content-Type: application/json" \
-                -d "{\"tag_name\":\"${TAG}\",\"name\":\"${TAG}\",\"body\":\"Release ${TAG}\"}" \
-                "https://api.github.com/repos/${REPO_SLUG}/releases" \
-                -o release.json
+            # deps
+            if ! command -v jq >/dev/null; then
+              sudo apt-get update -y
+              sudo apt-get install -y jq >/dev/null
             fi
 
-            RELEASE_ID=$(jq -r '.id' < release.json)
-            test "$RELEASE_ID" != "null" -a -n "$RELEASE_ID"
+            api_json() {
+              # $1 = method, $2 = url, rest = curl args
+              curl -sS -X "$1" \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "$2" "${@:3}"
+            }
 
-            # upload assets
+            api_status() {
+              # like api_json but returns status code
+              curl -sS -o /dev/null -w "%{http_code}" -X "$1" \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "$2" "${@:3}"
+            }
+
+            # 1) get or create release (suppress 404 noise, handle both cases)
+            GET_URL="https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG}"
+            code=$(api_status GET "$GET_URL")
+            if [ "$code" = "200" ]; then
+              api_json GET "$GET_URL" > release.json
+              echo "Found release for tag ${TAG}"
+            elif [ "$code" = "404" ]; then
+              echo "No release for ${TAG}; creating…"
+              CREATE_URL="https://api.github.com/repos/${REPO_SLUG}/releases"
+              api_json POST "$CREATE_URL" \
+                -H "Content-Type: application/json" \
+                -d "{\"tag_name\":\"${TAG}\",\"name\":\"${TAG}\",\"body\":\"Release ${TAG}\"}" > release.json
+            else
+              echo "Failed to query release (HTTP $code)"; exit 1
+            fi
+
+            RELEASE_ID=$(jq -r '.id // empty' < release.json)
+            if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+              echo "Could not obtain release id:"; cat release.json; exit 1
+            fi
+            echo "Release id: $RELEASE_ID"
+
+            # helper to remove an existing asset by name (to avoid 422 on re-upload)
+            delete_asset_if_exists() {
+              local name="$1"
+              ASSETS_URL="https://api.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?per_page=100"
+              assets=$(api_json GET "$ASSETS_URL")
+              ASSET_ID=$(echo "$assets" | jq -r --arg n "$name" '.[] | select(.name==$n) | .id' | head -n1)
+              if [ -n "${ASSET_ID:-}" ]; then
+                echo "Deleting existing asset: $name (id $ASSET_ID)"
+                DEL_URL="https://api.github.com/repos/${REPO_SLUG}/releases/assets/${ASSET_ID}"
+                code=$(api_status DELETE "$DEL_URL")
+                if [ "$code" != "204" ]; then
+                  echo "Failed to delete asset $name (HTTP $code)"; exit 1
+                fi
+              fi
+            }
+
+            # 2) upload all artifacts from ./release
+            UPLOAD_BASE="https://uploads.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?name="
+            shopt -s nullglob
             for f in release/*; do
               [ -f "$f" ] || continue
-              NAME=$(basename "$f")
-              echo "Uploading $NAME"
-              curl -fsS -X POST \
+              name=$(basename "$f")
+              delete_asset_if_exists "$name"
+              echo "Uploading $name"
+              code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                 -H "Content-Type: application/octet-stream" \
                 --data-binary @"$f" \
-                "https://uploads.github.com/repos/${REPO_SLUG}/releases/${RELEASE_ID}/assets?name=${NAME}" \
-                >/dev/null
+                "${UPLOAD_BASE}${name}")
+              if [ "$code" != "201" ]; then
+                echo "Upload failed for $name (HTTP $code)"; exit 1
+              fi
             done
+
+            echo "✅ Release ${TAG} published with assets."
 
 workflows:
   version: 2
