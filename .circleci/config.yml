@@ -83,7 +83,7 @@ jobs:
     docker:
       - image: cimg/base:stable
     environment:
-      GITHUB_TOKEN: ${GITHUB_TOKEN}   # ensure it’s mapped into the container
+      GITHUB_TOKEN: ${GITHUB_TOKEN}   # keep this
     steps:
       - checkout
       - attach_workspace: { at: . }
@@ -99,13 +99,6 @@ jobs:
               sudo apt-get install -y gh
             fi
       - run:
-          name: Authenticate gh with PAT
-          command: |
-            set -euo pipefail
-            : "${GITHUB_TOKEN:?GITHUB_TOKEN is not set}"
-            echo "$GITHUB_TOKEN" | gh auth login --with-token
-            gh auth status
-      - run:
           name: Create/Update GitHub Release and upload assets
           command: |
             set -euxo pipefail
@@ -113,7 +106,6 @@ jobs:
             TAG="${CIRCLE_TAG}"
             REPO="$(git config --get remote.origin.url | sed -E 's#.*github.com[:/](.+)\.git#\1#')"
 
-            # create release if missing
             if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
               gh release create "$TAG" --repo "$REPO" -t "$TAG" -n "Release $TAG"
             fi
